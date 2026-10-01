@@ -16,12 +16,29 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        release {
+            storeFile file("release.keystore")
+            storeType "PKCS12"
+            storePassword "tvboxweb123"
+            keyAlias "tvbox"
+            keyPassword "tvboxweb123"
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        debug {
+            signingConfig signingConfigs.release
+        }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -39,7 +56,4 @@ dependencies {
     // High performance network & JSON
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.google.code.gson:gson:2.10.1'
-
-    // Optional QuickJS runtime for JS spiders
-    implementation 'io.github.dokar3:quickjs-android:0.7.0'
 }
