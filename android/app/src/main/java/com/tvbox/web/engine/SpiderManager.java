@@ -37,6 +37,7 @@ public class SpiderManager {
     private DexClassLoader mClassLoader;
     private JsonObject mCurrentConfig;
     private String mSpiderUrl = "";
+    private volatile String mLastSpiderError = null;
 
     private SpiderManager(Context context) {
         this.mContext = context.getApplicationContext();
@@ -135,27 +136,38 @@ public class SpiderManager {
         this.mSpiderUrl = spiderUrl;
         this.mSpiderCache.clear();
         this.mMethodCache.clear();
+        this.mLastSpiderError = null;
 
         try {
             File dexDir = new File(mContext.getFilesDir(), "spiders");
             if (!dexDir.exists()) dexDir.mkdirs();
 
-            File jarFile = new File(dexDir, "spider_runtime.jar");
+            String jarName = "spider_" + Integer.toHexString(spiderUrl.hashCode()) + ".jar";
+            File jarFile = new File(dexDir, jarName);
             File optDir = new File(mContext.getCodeCacheDir(), "dex_opt");
             if (!optDir.exists()) optDir.mkdirs();
 
             File libDir = new File(mContext.getFilesDir(), "spider_libs");
             if (!libDir.exists()) libDir.mkdirs();
 
-            Log.i(TAG, "Downloading spider jar from: " + spiderUrl);
-            Request req = new Request.Builder()
-                    .url(spiderUrl)
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    .build();
-            try (Response resp = mHttp.newCall(req).execute()) {
-                if (resp.isSuccessful() && resp.body() != null) {
+            // Download only if not exists or empty
+            if (!jarFile.exists() || jarFile.length() < 1024) {
+                Log.i(TAG, "Downloading spider jar from: " + spiderUrl);
+                File tmpFile = new File(dexDir, jarName + ".tmp");
+                if (tmpFile.exists()) tmpFile.delete();
+
+                Request req = new Request.Builder()
+                        .url(spiderUrl)
+                        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                        .build();
+                try (Response resp = mHttp.newCall(req).execute()) {
+                    if (!resp.isSuccessful() || resp.body() == null) {
+                        mLastSpiderError = "Spider下载失败: HTTP " + resp.code();
+                        Log.e(TAG, mLastSpiderError);
+                        return;
+                    }
                     try (InputStream in = resp.body().byteStream();
-                         FileOutputStream out = new FileOutputStream(jarFile)) {
+                         FileOutputStream out = new FileOutputStream(tmpFile)) {
                         byte[] buf = new byte[8192];
                         int len;
                         while ((len = in.read(buf)) != -1) {
@@ -163,6 +175,12 @@ public class SpiderManager {
                         }
                     }
                 }
+
+                if (jarFile.exists()) {
+                    jarFile.setWritable(true, false);
+                    jarFile.delete();
+                }
+                tmpFile.renameTo(jarFile);
             }
 
             // Extract native libs (.so) and guard resources from the downloaded jar/zip
@@ -173,6 +191,9 @@ public class SpiderManager {
                     String name = entry.getName();
                     if (name.endsWith(".so")) {
                         File soOut = new File(libDir, new File(name).getName());
+                        if (soOut.exists()) {
+                            soOut.setWritable(true, false);
+                        }
                         try (InputStream zis = zf.getInputStream(entry);
                              FileOutputStream zos = new FileOutputStream(soOut)) {
                             byte[] b = new byte[8192];
@@ -219,7 +240,8 @@ public class SpiderManager {
                 Log.w(TAG, "Init.init(context) invoke warning: " + t.getMessage());
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error initializing DexClassLoader: " + e.getMessage(), e);
+            mLastSpiderError = "DexClassLoader初始化异常: " + e.getMessage();
+            Log.e(TAG, mLastSpiderError, e);
         }
     }
 
@@ -227,7 +249,11 @@ public class SpiderManager {
      * Get or create a Spider instance (e.g. csp_AiNewWoggGuard)
      */
     public Object getSpider(String apiClass, String ext) {
-        if (mClassLoader == null || apiClass == null) return null;
+        if (mClassLoader == null) {
+            Log.e(TAG, "mClassLoader is null, last error: " + mLastSpiderError);
+            return null;
+        }
+        if (apiClass == null) return null;
         String cacheKey = apiClass + "#" + (ext == null ? "" : ext);
         if (mSpiderCache.containsKey(cacheKey)) {
             return mSpiderCache.get(cacheKey);
@@ -242,7 +268,6 @@ public class SpiderManager {
             try {
                 clazz = mClassLoader.loadClass(fullClassName);
             } catch (ClassNotFoundException e) {
-                // Try direct class name
                 try {
                     clazz = mClassLoader.loadClass("com.github.catvod.spider." + apiClass);
                 } catch (ClassNotFoundException ignored) {
@@ -250,11 +275,19 @@ public class SpiderManager {
             }
 
             if (clazz == null) {
-                Log.w(TAG, "Spider class not found: " + fullClassName);
+                mLastSpiderError = "未找到类: " + fullClassName;
+                Log.w(TAG, mLastSpiderError);
                 return null;
             }
 
             Object instance = clazz.getDeclaredConstructor().newInstance();
+
+            // Set siteKey field if present
+            try {
+                java.lang.reflect.Field field = clazz.getField("siteKey");
+                field.set(instance, cacheKey.split("#")[0]);
+            } catch (Throwable ignored) {
+            }
 
             // Invoke init(Context, String extend) or init(Context)
             try {
@@ -271,9 +304,14 @@ public class SpiderManager {
             mSpiderCache.put(cacheKey, instance);
             return instance;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to instantiate spider " + apiClass + ": " + e.getMessage(), e);
+            mLastSpiderError = "实例化爬虫 " + apiClass + " 失败: " + e.getMessage();
+            Log.e(TAG, mLastSpiderError, e);
             return null;
         }
+    }
+
+    public String getLastSpiderError() {
+        return mLastSpiderError;
     }
 
     /**
@@ -282,7 +320,8 @@ public class SpiderManager {
     public String callHome(String apiClass, String ext) {
         Object spider = getSpider(apiClass, ext);
         if (spider == null) {
-            return "{\"error\":\"Spider类未找到或初始化未完成: " + apiClass + "\",\"list\":[]}";
+            String err = mLastSpiderError != null ? mLastSpiderError : ("Spider类未找到: " + apiClass);
+            return "{\"error\":\"" + err + "\",\"list\":[]}";
         }
         try {
             Method m = spider.getClass().getMethod("homeContent", boolean.class);

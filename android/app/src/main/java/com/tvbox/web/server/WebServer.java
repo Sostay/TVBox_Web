@@ -331,13 +331,15 @@ public class WebServer extends NanoHTTPD {
     private Response handleWebsiteApi(IHTTPSession session, String uri) {
         try {
             if (uri.equals("/website/api/status")) {
-                String statusJson = "{\"code\":0,\"data\":{\"providers\":{" +
+                String statusJson = "{\"code\":0,\"data\":{\"dbSize\":0,\"providers\":{" +
                         "\"quark\":{\"configured\":true,\"login\":true,\"state\":\"已配置\",\"label\":\"夸克 Cookie\"}," +
                         "\"baidu\":{\"configured\":true,\"login\":true,\"state\":\"已配置\",\"label\":\"百度 Cookie\"}," +
                         "\"uc\":{\"configured\":true,\"login\":true,\"state\":\"已配置\",\"label\":\"UC Cookie\"}," +
                         "\"thunder\":{\"configured\":false,\"login\":false,\"state\":\"未登录\"}," +
                         "\"pan123\":{\"configured\":false,\"login\":false,\"state\":\"未配置\"}," +
-                        "\"pan115\":{\"configured\":false,\"login\":false,\"state\":\"未配置\"}" +
+                        "\"pan115\":{\"configured\":false,\"login\":false,\"state\":\"未配置\"}," +
+                        "\"guangya\":{\"configured\":false,\"login\":false,\"state\":\"未配置\"}," +
+                        "\"pan189\":{\"configured\":false,\"login\":false,\"state\":\"未配置\"}" +
                         "}}}";
                 return jsonResponse(statusJson, Response.Status.OK);
             }
@@ -347,20 +349,36 @@ public class WebServer extends NanoHTTPD {
             }
 
             if (uri.equals("/website/api/credentials")) {
-                // Read local saved credentials if available
+                JsonObject defaultCreds = new JsonObject();
+                JsonObject quark = new JsonObject(); quark.addProperty("cookie", ""); defaultCreds.add("quark", quark);
+                JsonObject baidu = new JsonObject(); baidu.addProperty("cookie", ""); defaultCreds.add("baidu", baidu);
+                JsonObject uc = new JsonObject(); uc.addProperty("cookie", ""); uc.addProperty("token", ""); defaultCreds.add("uc", uc);
+                JsonObject thunder = new JsonObject(); thunder.addProperty("username", ""); thunder.addProperty("password", ""); defaultCreds.add("thunder", thunder);
+                JsonObject pan123 = new JsonObject(); pan123.addProperty("username", ""); pan123.addProperty("password", ""); defaultCreds.add("pan123", pan123);
+                JsonObject pan115 = new JsonObject(); pan115.addProperty("cookie", ""); defaultCreds.add("pan115", pan115);
+                JsonObject guangya = new JsonObject(); guangya.addProperty("token", ""); defaultCreds.add("guangya", guangya);
+                JsonObject pan189 = new JsonObject(); pan189.addProperty("cookie", ""); defaultCreds.add("pan189", pan189);
+
                 java.io.File cfgFile = new java.io.File(mContext.getFilesDir(), "wexfnwconfig.json");
                 if (cfgFile.exists()) {
                     try {
                         String str = new String(java.nio.file.Files.readAllBytes(cfgFile.toPath()), StandardCharsets.UTF_8);
-                        return jsonResponse("{\"code\":0,\"data\":" + str + "}", Response.Status.OK);
+                        JsonObject saved = mGson.fromJson(str, JsonObject.class);
+                        if (saved != null) {
+                            for (String pKey : saved.keySet()) {
+                                defaultCreds.add(pKey, saved.get(pKey));
+                            }
+                        }
                     } catch (Exception ignored) {
                     }
                 }
-                return jsonResponse("{\"code\":0,\"data\":{}}", Response.Status.OK);
+                JsonObject respObj = new JsonObject();
+                respObj.addProperty("code", 0);
+                respObj.add("data", defaultCreds);
+                return jsonResponse(respObj.toString(), Response.Status.OK);
             }
 
             if (uri.startsWith("/website/api/credential/")) {
-                // PUT to save credential: /website/api/credential/:provider/:field
                 Map<String, String> files = new HashMap<>();
                 session.parseBody(files);
                 String postData = files.get("postData");
