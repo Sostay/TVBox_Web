@@ -613,6 +613,15 @@
       loadSiteHome();
     }
 
+    // Helper to resolve spider route dynamically across Node and Android backends
+    function getSpiderApiUrl(action) {
+      if (!currentSite) return '';
+      if (currentSite.api && currentSite.api.startsWith('/spider/')) {
+        return `/api${currentSite.api}/${action}`;
+      } else {
+        return `/api/spider/${encodeURIComponent(currentSite.key)}/${action}`;
+      }
+    }
     // Load Home Videos (with auto-init to probe live mirrors)
     async function loadSiteHome() {
       if (!currentSite) return;
@@ -621,16 +630,11 @@
       videoGrid.innerHTML = '';
       currentTid = '';
 
-      const isNodeSite = currentSite.api && currentSite.api.startsWith('/spider/');
-      
       try {
-        if (!isNodeSite) {
-          throw new Error('DEX_REQUIRES_ANDROID');
-        }
 
         // 1. Automatically call /init to discover live mirror URLs (e.g. wogg.live)
         try {
-          await fetch(`/api${currentSite.api}/init`, {
+          await fetch(getSpiderApiUrl('init'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
@@ -640,7 +644,7 @@
         }
 
         // 2. Fetch Home video list
-        const res = await fetch(`/api${currentSite.api}/home`, {
+        const res = await fetch(getSpiderApiUrl('home'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({})
@@ -667,10 +671,7 @@
       const errCodeSpan = document.getElementById('siteErrorCode');
       const errMsgP = document.getElementById('siteErrorMessage');
 
-      if (err.message === 'DEX_REQUIRES_ANDROID') {
-        errCodeSpan.textContent = '需要 Android 引擎';
-        errMsgP.textContent = `站点「${currentSite?.name}」属于纯 Dalvik Dex 字节码源 (${currentSite?.api})，将在第二步 Android 后端打通后由安卓虚拟机接管。目前可切换至 Node 聚合源中的站点观影。`;
-      } else if (err.message.includes('HTTP_500')) {
+      if (err.message.includes('HTTP_500')) {
         errCodeSpan.textContent = 'HTTP 500 (网盘/目标站超时)';
         errMsgP.textContent = `站点「${currentSite?.name}」底层目标服务器连接超时或证书异常（如玩偶4K旧镜像失效）。该类站点通常需要网盘转存授权。建议直接切换至右侧已测通的高可用秒播站点。`;
       } else {
@@ -744,7 +745,7 @@
       videoGrid.innerHTML = '';
 
       try {
-        const res = await fetch(`/api${currentSite.api}/category`, {
+        const res = await fetch(getSpiderApiUrl('category'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tid, pg: 1 })
@@ -770,7 +771,7 @@
       videoGrid.innerHTML = '';
 
       try {
-        const res = await fetch(`/api${currentSite.api}/search`, {
+        const res = await fetch(getSpiderApiUrl('search'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ wd, pg: 1 })
@@ -838,7 +839,7 @@
       playerLoading.classList.remove('hidden');
 
       try {
-        const res = await fetch(`/api${currentSite.api}/detail`, {
+        const res = await fetch(getSpiderApiUrl('detail'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: vodId })
@@ -953,7 +954,7 @@
 
       try {
         const currentFlag = parsedLines[currentLineIndex]?.name || '';
-        const res = await fetch(`/api${currentSite.api}/play`, {
+        const res = await fetch(getSpiderApiUrl('play'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ flag: currentFlag, id: ep.id })

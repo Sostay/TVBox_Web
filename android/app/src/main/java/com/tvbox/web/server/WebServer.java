@@ -62,6 +62,14 @@ public class WebServer extends NanoHTTPD {
                 return resp;
             }
 
+            // 1.1 Cloud Drive Config Center Web UI (/website)
+            if (uri.equals("/website") || uri.equals("/website/") || uri.equals("/website/index.html")) {
+                InputStream is = mContext.getAssets().open("web/website.html");
+                Response resp = newChunkedResponse(Response.Status.OK, "text/html; charset=utf-8", is);
+                addCorsHeaders(resp);
+                return resp;
+            }
+
             // 2. Stream Proxy with Range & Anti-Hotlinking Injection
             if (uri.startsWith("/api/stream")) {
                 return handleStreamProxy(session);
