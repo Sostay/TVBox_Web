@@ -23,7 +23,6 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.Response;
 
 public class WebServer extends NanoHTTPD {
 
@@ -199,7 +198,7 @@ public class WebServer extends NanoHTTPD {
                 reqBuilder.header("Range", clientRange);
             }
 
-            Response okResp = mHttp.newCall(reqBuilder.build()).execute();
+            okhttp3.Response okResp = mHttp.newCall(reqBuilder.build()).execute();
             if (okResp.body() == null) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Empty proxy response");
             }
