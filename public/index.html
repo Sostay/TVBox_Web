@@ -655,6 +655,9 @@
         }
 
         const data = await res.json();
+        if (data.error && (!data.list || data.list.length === 0)) {
+          throw new Error(data.error);
+        }
         currentClasses = data.class || [];
         renderCategoryBar();
         renderVideoCards(data.list || []);

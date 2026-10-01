@@ -1,8 +1,11 @@
 <resources>
     <style name="Theme.TVBoxWeb" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/indigo_500</item>
-        <item name="colorPrimaryVariant">@color/indigo_600</item>
+        <item name="colorPrimaryVariant">#0B0F19</item>
         <item name="colorOnPrimary">@color/white</item>
-        <item name="android:windowBackground">@color/black</item>
+        <item name="android:windowBackground">#0B0F19</item>
+        <item name="android:statusBarColor">#0B0F19</item>
+        <item name="android:navigationBarColor">#0B0F19</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

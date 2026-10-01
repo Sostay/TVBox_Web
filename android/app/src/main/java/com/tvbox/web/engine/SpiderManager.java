@@ -208,6 +208,16 @@ public class SpiderManager {
                     mContext.getClassLoader()
             );
             Log.i(TAG, "DexClassLoader initialized successfully with libDir: " + libDir.getAbsolutePath());
+
+            // Activate JNI and guard layers via com.github.catvod.spider.Init
+            try {
+                Class<?> initClz = mClassLoader.loadClass("com.github.catvod.spider.Init");
+                Method initM = initClz.getMethod("init", Context.class);
+                initM.invoke(null, mContext);
+                Log.i(TAG, "Invoked com.github.catvod.spider.Init.init(context) successfully!");
+            } catch (Throwable t) {
+                Log.w(TAG, "Init.init(context) invoke warning: " + t.getMessage());
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error initializing DexClassLoader: " + e.getMessage(), e);
         }
@@ -271,14 +281,37 @@ public class SpiderManager {
      */
     public String callHome(String apiClass, String ext) {
         Object spider = getSpider(apiClass, ext);
-        if (spider == null) return "{}";
+        if (spider == null) {
+            return "{\"error\":\"Spider类未找到或初始化未完成: " + apiClass + "\",\"list\":[]}";
+        }
         try {
             Method m = spider.getClass().getMethod("homeContent", boolean.class);
             Object res = m.invoke(spider, true);
-            return res != null ? res.toString() : "{}";
+            String homeStr = res != null ? res.toString() : "{}";
+
+            try {
+                JsonObject obj = mGson.fromJson(homeStr, JsonObject.class);
+                if (obj != null && (!obj.has("list") || obj.getAsJsonArray("list").size() == 0)) {
+                    try {
+                        Method mVideo = spider.getClass().getMethod("homeVideoContent");
+                        Object resVideo = mVideo.invoke(spider);
+                        if (resVideo != null) {
+                            JsonObject vObj = mGson.fromJson(resVideo.toString(), JsonObject.class);
+                            if (vObj != null && vObj.has("list") && vObj.getAsJsonArray("list").size() > 0) {
+                                obj.add("list", vObj.get("list"));
+                                homeStr = obj.toString();
+                            }
+                        }
+                    } catch (NoSuchMethodException ignored) {
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+
+            return homeStr;
         } catch (Exception e) {
             Log.e(TAG, "callHome error: " + e.getMessage(), e);
-            return "{}";
+            return "{\"error\":\"callHome异常: " + e.getMessage() + "\",\"list\":[]}";
         }
     }
 

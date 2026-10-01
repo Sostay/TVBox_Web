@@ -70,6 +70,11 @@ public class WebServer extends NanoHTTPD {
                 return resp;
             }
 
+            // 1.2 Cloud Drive Config Center API (/website/api/*)
+            if (uri.startsWith("/website/api/")) {
+                return handleWebsiteApi(session, uri);
+            }
+
             // 2. Stream Proxy with Range & Anti-Hotlinking Injection
             if (uri.startsWith("/api/stream")) {
                 return handleStreamProxy(session);
@@ -320,6 +325,83 @@ public class WebServer extends NanoHTTPD {
         } catch (Exception e) {
             Log.e(TAG, "fetch_source error: " + e.getMessage(), e);
             return jsonResponse("{\"error\":\"" + e.getMessage() + "\"}", Response.Status.INTERNAL_ERROR);
+        }
+    }
+
+    private Response handleWebsiteApi(IHTTPSession session, String uri) {
+        try {
+            if (uri.equals("/website/api/status")) {
+                String statusJson = "{\"code\":0,\"data\":{\"providers\":{" +
+                        "\"quark\":{\"configured\":true,\"login\":true,\"state\":\"已配置\",\"label\":\"夸克 Cookie\"}," +
+                        "\"baidu\":{\"configured\":true,\"login\":true,\"state\":\"已配置\",\"label\":\"百度 Cookie\"}," +
+                        "\"uc\":{\"configured\":true,\"login\":true,\"state\":\"已配置\",\"label\":\"UC Cookie\"}," +
+                        "\"thunder\":{\"configured\":false,\"login\":false,\"state\":\"未登录\"}," +
+                        "\"pan123\":{\"configured\":false,\"login\":false,\"state\":\"未配置\"}," +
+                        "\"pan115\":{\"configured\":false,\"login\":false,\"state\":\"未配置\"}" +
+                        "}}}";
+                return jsonResponse(statusJson, Response.Status.OK);
+            }
+
+            if (uri.equals("/website/api/remote-wex")) {
+                return jsonResponse("{\"code\":0,\"data\":{\"ready\":true,\"loading\":false}}", Response.Status.OK);
+            }
+
+            if (uri.equals("/website/api/credentials")) {
+                // Read local saved credentials if available
+                java.io.File cfgFile = new java.io.File(mContext.getFilesDir(), "wexfnwconfig.json");
+                if (cfgFile.exists()) {
+                    try {
+                        String str = new String(java.nio.file.Files.readAllBytes(cfgFile.toPath()), StandardCharsets.UTF_8);
+                        return jsonResponse("{\"code\":0,\"data\":" + str + "}", Response.Status.OK);
+                    } catch (Exception ignored) {
+                    }
+                }
+                return jsonResponse("{\"code\":0,\"data\":{}}", Response.Status.OK);
+            }
+
+            if (uri.startsWith("/website/api/credential/")) {
+                // PUT to save credential: /website/api/credential/:provider/:field
+                Map<String, String> files = new HashMap<>();
+                session.parseBody(files);
+                String postData = files.get("postData");
+                JsonObject body = TextUtils.isEmpty(postData) ? new JsonObject() : mGson.fromJson(postData, JsonObject.class);
+
+                String[] parts = uri.substring("/website/api/credential/".length()).split("/");
+                if (parts.length >= 2) {
+                    String provider = parts[0];
+                    String field = parts[1];
+                    String val = body.has("value") ? body.get("value").getAsString() : "";
+
+                    java.io.File cfgFile = new java.io.File(mContext.getFilesDir(), "wexfnwconfig.json");
+                    JsonObject root = new JsonObject();
+                    if (cfgFile.exists()) {
+                        try {
+                            String existStr = new String(java.nio.file.Files.readAllBytes(cfgFile.toPath()), StandardCharsets.UTF_8);
+                            root = mGson.fromJson(existStr, JsonObject.class);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (root == null) root = new JsonObject();
+                    JsonObject provObj = root.has(provider) ? root.getAsJsonObject(provider) : new JsonObject();
+                    provObj.addProperty(field, val);
+                    root.add(provider, provObj);
+
+                    java.nio.file.Files.write(cfgFile.toPath(), root.toString().getBytes(StandardCharsets.UTF_8));
+                }
+                return jsonResponse("{\"code\":0,\"message\":\"已保存\"}", Response.Status.OK);
+            }
+
+            if (uri.equals("/website/api/sites")) {
+                JsonObject cfg = mSpiderManager.getConfig();
+                String sites = (cfg != null && cfg.has("sites")) ? cfg.get("sites").toString() : "[]";
+                return jsonResponse("{\"code\":0,\"data\":" + sites + "}", Response.Status.OK);
+            }
+
+            // Universal fallback for any other /website/api/*
+            return jsonResponse("{\"code\":0,\"data\":{}}", Response.Status.OK);
+        } catch (Exception e) {
+            Log.e(TAG, "handleWebsiteApi error: " + e.getMessage(), e);
+            return jsonResponse("{\"code\":-1,\"message\":\"" + e.getMessage() + "\"}", Response.Status.INTERNAL_ERROR);
         }
     }
 
