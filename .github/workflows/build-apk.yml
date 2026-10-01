@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build TVBox Web Android APK (Fixed Signature)
@@ -23,10 +26,32 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Ensure Fixed Release Keystore Exists
+        run: |
+          if [ ! -f android/app/release.jks ]; then
+            echo "Generating permanent fixed release.jks..."
+            keytool -genkeypair -v \
+              -keystore android/app/release.jks \
+              -alias tvbox \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass tvboxweb123 \
+              -keypass tvboxweb123 \
+              -dname "CN=TVBox Web, O=TVBox, C=CN" \
+              -noprompt
+            
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add android/app/release.jks
+            git commit -m "chore(signing): permanently commit fixed release.jks for reproducible upgrades" || true
+            git push origin main || true
+          fi
+
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
-      - name: Build Signed APK with Gradle
+      - name: Build Signed Release APK with Gradle
         run: |
           cd android
           ./gradlew assembleRelease --stacktrace

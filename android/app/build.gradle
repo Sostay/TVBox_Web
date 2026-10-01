@@ -18,8 +18,7 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("release.keystore")
-            storeType "PKCS12"
+            storeFile file("release.jks")
             storePassword "tvboxweb123"
             keyAlias "tvbox"
             keyPassword "tvboxweb123"
