@@ -281,7 +281,7 @@ public class WebServer extends NanoHTTPD {
 
             okhttp3.Response okResp = mHttp.newCall(req).execute();
             if (!okResp.isSuccessful() || okResp.body() == null) {
-                return jsonResponse("{\"error\":\"Failed to fetch source: HTTP " + okResp.code() + "\"}", Response.Status.BAD_GATEWAY);
+                return jsonResponse("{\"error\":\"Failed to fetch source: HTTP " + okResp.code() + "\"}", Response.Status.INTERNAL_ERROR);
             }
 
             String content = okResp.body().string().trim();
