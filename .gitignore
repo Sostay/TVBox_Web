@@ -1,0 +1,53 @@
+# ==========================================
+# TVBox Web - Git Ignore Rules
+# ==========================================
+
+# 1. User Private Configurations & Cloud Drive Tokens
+wexfnwconfig.json
+*.cookie
+*.token
+
+# 2. Local Video Source Subscriptions (Do not commit third-party sources)
+configs/*.json
+configs/*.md5
+configs/*.bin
+configs/*.txt
+
+# 3. Media & Downloaded Segments
+*.ts
+*.m3u8
+*.mp4
+*.flv
+*.mkv
+frame*.jpg
+frame*.png
+
+# 4. Node.js & Portable Binaries
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bin/
+*.log
+
+# 5. Android Build Artifacts & Android Studio
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
+android/captures/
+android/.cxx/
+*.apk
+*.aab
+
+# 6. OS & System temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+vod_cache/
+*.dl
+

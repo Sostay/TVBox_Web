@@ -1,0 +1,399 @@
+# Compatibility
+
+- 对照版本：0.8.0（Build 130）
+- 最近更新：2026-10-01
+- 当前稳定版本：0.8.0（Build 130），Apple Silicon / arm64 / macOS 12.0+
+- 最新公开公证 DMG：0.8.0（Build 130）；Developer ID、Apple Accepted、Staple、Gatekeeper 与安装 smoke 均通过
+- 发布 tag `v0.8.0` 固定 `b049b381db52b5bbbeec9cf58bf54a5bd50a4f39`；正式门禁结果见
+  [发布验证记录](../../../../Docs/RELEASE_VALIDATION_0.8.0.md)。
+
+## 概述
+
+OKVideoMac 的兼容性主要取决于源格式、站点类型、运行时、API 结构、解析方式和
+媒体行为，而不是简单以 TVBox、FongMi、MiraPlay 或 CatPawOpen 等生态名称判断。
+能够使用某个生态中的部分源，不表示实现了该生态的完整协议或支持其中所有源。
+
+本页区分配置能否被解析、Provider/Spider 是否能执行，以及最终媒体能否由 libmpv
+播放。配置字段能被解析或无损保留，不自动代表相应功能已经接入执行链。
+
+## 状态定义
+
+- `Supported`：主要调用链已经实现，并有自动化、静态调用链或实机验证证据。
+- `Partial`：核心路径存在，但部分操作、字段或源类型仍缺失。
+- `Selected`：只兼容符合当前已实现接口的部分脚本或源，不代表整个生态。
+- `Experimental`：实现存在，但外部真实样本、运行环境或长期稳定性覆盖有限。
+- `Unsupported`：当前执行链不支持；即使字段能被读取，也不会执行该能力。
+- `Untested`：代码路径存在，但缺少足以作公开保证的验证。
+- `Not Applicable`：项目明确不提供该能力。
+
+`Supported` 不表示任意第三方影视源都会永久可用；它只表示客户端对应路径有
+可重复的验证证据。
+
+## 配置格式
+
+| 配置载体 | 状态 | 说明 |
+| --- | --- | --- |
+| URL JSON | Supported | 远程配置只接受 HTTP/HTTPS；包含规范化、取消、重试和失败隔离 |
+| 本地文件 / Finder 打开 | Supported | 只读取用户选择或 Finder 传入的配置 |
+| 粘贴 JSON | Supported | 包含同事件同步、大小、重复 JSON key 和未知字段处理 |
+| FongMi 图片/Base64 包装 JSON | Supported | 只识别指定 marker 后的一层 Base64，解码结果必须是 JSON 对象 |
+| 通用 Base64 配置 | Unsupported | 不递归解码，不接受任意嵌套 Base64 或 Base64 XML |
+| 通用 XML 配置文件 | Unsupported | XML 仅用于部分 CMS API 响应和 XMLTV EPG，不是配置载体 |
+| Node `.js.md5` 配置入口 | Selected | 仅用于受支持的 CatVod/CatPaw 风格 Node 视频 bundle |
+
+配置模型可以读取 `sites`、`parses`、`lives`、`headers`、`flags`、`proxy`、
+`doh`、`rules`、`hosts`、`ads`、`danmaku` 等字段，并保留未知字段。实际功能支持
+应以以下运行时和限制表为准，不能从“字段可读取”推导为“功能已支持”。
+
+## 点播源
+
+| 能力 | 状态 | 证据与限制 |
+| --- | --- | --- |
+| Native CMS JSON，type 1 | Supported | 首页、分类、筛选、详情和搜索映射有自动化测试；播放仍受媒体端影响 |
+| Native CMS XML API 响应，type 0 | Partial | 核心 class/list 响应映射有测试；详情、搜索等覆盖窄于 JSON 路径 |
+| Native type 4 | Partial | 分类筛选使用 URL-safe Base64 JSON 参数；不代表通用 Base64 API |
+| Headers 网络规则 | Supported | host 匹配、Header/Cookie 合并和日志脱敏已接入 |
+| 源提供弹幕 | Supported | 读取播放结果的 `danmaku` / `danmu` 和 CatPaw `extra` 形态；单来源或唯一 preferred 自动加载，多来源不明确时由用户选择 |
+| 弹幕搜索与导入 | Selected | 支持 Bilibili XML、本地导入、配置级或用户填写的 CatPaw 兼容服务；Xtream 需外部服务，不自动把片名发送给第三方 |
+
+## Spider 运行时
+
+### Native
+
+Native Provider 处理 type 0、1、4，不依赖 QuickJS、Node 或 Android。它实现首页、
+分类、详情、搜索和播放地址交接；不同 CMS 的非标准字段和响应仍可能导致不兼容。
+
+### Native Xtream
+
+状态：`Supported`，按已实现的 Xtream-compatible API 子集定义。
+
+| 能力 | 状态 | 边界 |
+| --- | --- | --- |
+| Authentication | Supported | Active 认证及过期/禁用/无效响应拒绝；密码仅存 Keychain |
+| Movies | Supported | 分类、列表、详情、播放；空 metadata 数组可回退目录信息 |
+| Series | Supported | 分类、列表、详情、Season/Episode 与连续播放 |
+| Search | Supported | Movie + Series 本地索引和聚合搜索接入 |
+| Basic Live | Supported | 分类、频道、搜索、收藏/隐藏、刷新及同频道 TS/HLS 有限回退 |
+| Short EPG | Supported | 频道短节目单和 Full Guide 由 Xtream EPG API 按频道、日期及有限时间窗加载 |
+| catch-up / timeshift / direct_source | Unsupported | 这些能力没有完整执行链，不能从 EPG 或导入直播能力推导 |
+
+Native Live 单独使用静态 HTTP 代理和 HTTPS CONNECT 决策，进入/离开该策略时
+销毁旧播放器实例，避免网络参数残留。普通 VOD 为 30 秒、导入 Live 为 8 秒，
+Native Live 为最多 60 秒；切台/取消可提前结束旧加载。PAC、SOCKS、认证代理与
+逐重定向/分片的系统路由没有完整实现。
+
+复杂 master 的受控处理只出现在已有的备用 HLS 尝试中，保留匹配的音频和字幕组；
+最多检查 10 秒及不足 256 KiB 数据，未知语义继续原地址。它不是通用 HLS 重写器，
+也不保证所有复杂 master 快速起播或所有服务商兼容。
+
+### QuickJS
+
+状态：`Selected`
+
+type 3 站点在解析到 HTTP(S) `.js` 脚本时进入 QuickJS。当前 Provider 映射
+`init`、`home`、`homeVod`、`category`、`detail`、`search`、`play` 和 `action`，
+并提供 selected CatVod/FongMi 风格的 HTTP、Base64、URL 与模块辅助接口。
+这不是浏览器、Node 或任意 TVBox JavaScript 的完整兼容层。
+
+`proxy`、`sniffer`、`isVideo` 虽有相关接口定义，但当前没有完整 Provider dispatch，
+不得视为完整支持。
+
+### Node `.js.md5`
+
+状态：`Selected`
+
+远程 URL 以 `.js.md5` 结尾时，OKVideoMac 使用 App 内置 Node 加载 bundle，调用其
+`start`/`stop`，连接动态 `127.0.0.1` HTTP endpoint，并读取 `/health` 和 `/config`。
+视频站点通过 `/spider/<key>/<method>` 形状调用 `home`、`category`、`detail`、
+`search` 和 `play`。根级 `sites` 和 `video.sites` 均可归一化；冷启动和并发调用
+共享 runtime readiness。
+
+`indexs == 1` 的首页卡片按协议直接进入搜索，不先请求详情。Node 聚合搜索共享
+runtime 执行槽且每站只请求第一页；Jar/Dex Provider 保持独立策略。播放尊重
+Spider 返回的清晰度顺序或显式位置，不按“原画”名称擅自绕过 Provider relay；
+远程跳转统一使用 mpv 的绝对关键帧命令，并以 mpv 的 seek 完成事件确认结果。
+
+这是受支持 CatVod/CatPaw 风格 Node 视频接口的一个兼容子集，不表示支持任意 Node
+Spider、完整 CatPawOpen 应用协议或其他内容模块。远程 bundle 具有 Node 完整能力，
+只应加载可信配置。
+
+### 0.8.0 的搜索、连播与配置边界
+
+| 能力 | 状态 | 证据与限制 |
+| --- | --- | --- |
+| CatPaw 搜索复用 | Selected | 30 秒有界内存缓存、同请求复用、Node 尝试次序调整；并发仍为 20，所有已选可执行站点仍尝试第一页，不保证固定加速比例 |
+| Node 详情与配置 revision | Selected | 缓存写入不取消页面详情；真实配置/账号/endpoint 变化仍使可复用数据失效 |
+| 编号视频文件自动连播 | Selected | 同季同版本、唯一序号列表；未知内容至少三个连续集号建立序列，可有其他缺集；前缀可以不同，不用重复/冲突集号猜测下一集 |
+| TVBox 配置卡片 | Experimental | 支持的 csp_PanConfig / csp_Guard；可取消，实际原生交互出现后才展示；普通影片详情不走配置流程 |
+| Android 配置网页 | Experimental | 明确点击的入口与 Provider 返回 URL 一致；交互/Provider/JAR 范围的网页、表单和 JS 对话框，不是通用桌面浏览器或完整 Android UI |
+| 原生播放授权继续 | Experimental | 原生交互确认后同集同线路最多重试一次；配置路由要求可核验的 `[realm](auth)` 合同及唯一匹配站点，未知 Cookie 错误/任意 HTML 不作为登录协议 |
+
+列表级集号推断只用于展示与播放队列，不升级为可信历史/收藏身份。连播等待历史列表
+恢复；拖动到确认片尾允许遵循自动连播设置，提前断流仍被拒绝。
+Bridge 当前为 0.3.48（60），相对 0.7.3 的 0.3.45（57）增加上述有界交互。
+前序 API 35 Bridge instrumentation 96 项通过，本轮对照确认 Android 源文件一致；
+真实账号授权成功与所有外部配置网页没有进行完整矩阵验收。
+
+### Android Managed component storage / uninstall
+
+状态：`Supported`（0.6.1 新增）。分类统计组件、安装缓存、用户数据和备份；仅删除可识别的
+Managed components。保留 AVD/userdata、登录状态、backing/encryption 文件、Android home、
+私有 ADB keys、用户数据 backups 和 runtime-selection；External SDK 始终排除。
+卸载前必须确认本应用 Android 会话停止（包括 External 模式）。只读 dry-run、短效单次计划、
+独立 Maintenance 事务及恢复保证删除范围可审计；未知内容保留，不提供删除用户数据入口。
+预计释放空间来自本次计划，需要时可重装组件，仍执行既有 AVD 兼容性检查。
+见 [实现与验证说明](../../../../Docs/ANDROID_MANAGED_UNINSTALL.md)。
+
+### Android / Dex
+
+状态：`Experimental`
+
+type 3、`api` 以 `csp_` 开头且存在 jar 引用时，Provider 可通过 Android Bridge 加载
+`com.github.catvod.spider.<name>`，并调用 CatVod 风格的 `homeContent`、
+`categoryContent`、`detailContent`、`searchContent`、`playerContent` 等方法。
+
+该路径先经过 `AndroidRuntimeModeCoordinator`，再进入原有 Emulator Session。
+Managed Runtime 是推荐默认：第一次实际 Dex 调用会暂停并提示安装固定的
+API 35 Google APIs arm64 Profile，完成后自动继续。普通用户不需要
+Android Studio、Homebrew、JDK、ADB 或 SDK 命令。External SDK 是用户明确选择的
+受支持高级模式，可以沿用兼容的已有 SDK 和 App 私有 AVD，不会触发 Managed
+installer。已有兼容 AVD 的启动能力不以 Java 或 `avdmanager` 为绝对前提；它们只
+影响创建/修复能力。
+
+模式保存在版本化、原子写入的 `AndroidRuntime/runtime-selection.json`。已有显式模式
+保持；无模式时先选完整验证可用的 Managed Generation，否则只迁移历史上由
+OKVideoMac 明确保存的 SDK。`PATH`、`ANDROID_HOME`、Homebrew 或 Android Studio
+不会静默改变模式。Managed 与 External 执行路径互相隔离。私有 ADB、专用
+AVD、动态 serial、ownership、single-flight、GPU fallback 与恢复继续由 Session 管理。
+AVD 兼容指纹不匹配时 fail closed，不会静默删除或重建 userdata。
+
+Bridge APK 已随 App 提供并由运行时自动安装。它只适用于受支持的 `csp_`
+Java/Dex Spider；Native、QuickJS、Node、直播和 XMLTV 不需要 Android。
+
+API 35 在 Candidate Matrix 中仍为 `evaluation`，同时是当前产品 `default`
+Profile：真实 Emulator E2E 证据来自 M1 / macOS 14.8.8。App 的 macOS 12.0+
+deployment support 不代表 macOS 12、13、15 已完成 Managed Runtime 实机验证。
+
+### 其他运行时
+
+| Runtime | 状态 | 说明 |
+| --- | --- | --- |
+| Python Spider | Unsupported | 当前不提供 Python 运行时 |
+| WebView Sniffer | Partial | parser type 0 使用 WKWebView 嗅探，具体网页行为依赖站点 |
+
+## 直播源
+
+独立直播源导入器支持 M3U、TXT 和 JSON 列表。M3U 支持常见 `#EXTINF`、
+`group-title`、`tvg-name`、`tvg-id`、`tvg-logo`、User-Agent、Referer、Origin 和
+自定义 header；TXT 和 JSON 也支持分组及多线路的对应子集。
+
+| 能力 | 状态 | 说明 |
+| --- | --- | --- |
+| M3U 频道列表 | Supported | 通过独立直播源导入器使用 |
+| TXT 频道列表 | Supported | 支持 `#genre#` 分组和多线路格式 |
+| JSON Live 列表 | Supported | 顶层为直播分组数组，不是点播配置 JSON |
+| HLS `.m3u8` 媒体 URL | Supported | 作为频道媒体地址播放；HLS segment manifest 不是频道列表 |
+| TVBox/FongMi 配置顶层 `lives` | Unsupported | 字段可以解析和保存，但尚未接入独立直播源导入器 |
+| catchup / timeshift | Unsupported | 当前未实现 |
+
+Native Xtream Basic Live 使用独立的 Provider 目录和引用；不导出带账号的媒体 URL。
+
+## EPG
+
+XMLTV EPG 可由 M3U 的 `tvg-url` / `url-tvg` 指定，支持远程 HTTP/HTTPS、gzip、
+缓存和按 `tvg-id`、`tvg-name`、频道名匹配。Native Xtream 通过短 EPG API 按频道
+加载节目；Full Guide 只查询可见频道附近的有限日期/时间窗，限制请求数、并发和缓存。
+两条路径都消费频道、开始/结束时间和标题，并支持日期导航、回到当前时刻和节目详情。
+这不等同于通用 XML 配置支持；TXT/JSON 直播列表当前没有 playlist-level EPG URL
+执行链。
+
+## 播放解析
+
+| 路径 | 状态 | 说明 |
+| --- | --- | --- |
+| direct URL / `parse=0` | Supported | HTTP、HTTPS 和受控 file URL 交给 libmpv |
+| parser type 1 | Supported | JSON parser，读取媒体 URL 和允许的 Header |
+| parser type 0 | Partial | WKWebView 媒体嗅探，行为依赖具体网页 |
+| parser type 2 | Unsupported | 配置可读取，但 PlaybackResolver 不执行 |
+| parser type 3 | Unsupported | 配置可读取，但 PlaybackResolver 不执行 |
+| parser type 4 | Unsupported | 配置可读取，但 PlaybackResolver 不执行 |
+| `parse:<name>` / `json:<url>` | Supported | 显式选择已支持的解析路径 |
+
+Android/Dex Provider 返回的远程 HTTP(S) 媒体及其播放 Header 直接交给 libmpv，
+由播放器负责 CDN Range、重试与跳转；只有 Provider 位于 Android 内部的 loopback
+媒体服务才通过具备作用域的 Bridge 会话转发。
+
+最终播放依赖 libmpv、系统可用 codec、媒体服务器、Headers/Cookies 和源本身行为。
+OKVideoMac 不提供 DRM 绕过。
+
+## 生态兼容性
+
+### TVBox
+
+OKVideoMac 支持部分 TVBox 风格的配置格式和 Spider 运行时，但各能力等级不同：
+
+- 常见 JSON 配置和 Native CMS JSON：支持；
+- CMS XML 响应和 type 4：部分支持；
+- QuickJS：仅 selected scripts；
+- `csp_` Java/Dex：实验性，且需要 Android Bridge；
+- 独立 M3U/TXT/JSON 直播导入：支持；
+- 配置顶层 `lives`：未接入直播导入器；
+- parser type 0/1：分别为 Partial/Supported；type 2/3/4 不执行。
+
+因此不应将 OKVideoMac 描述为“TVBox compatible”或“支持所有 TVBox 源”。
+
+### FongMi
+
+OKVideoMac 实现了部分 FongMi 配置约定及 CatVod Spider 接口，包括识别指定的
+图片/Base64 包装 JSON、selected QuickJS 接口和可选 `csp_` Java/Dex 路径。
+并非所有 FongMi 字段都有功能执行链，也不保证所有 FongMi 源或私有扩展可用。
+
+### MiraPlay 源兼容性
+
+部分同时被 MiraPlay 使用的源也可以在 OKVideoMac 中工作，这是因为双方能够消费
+相同的 CatVod/CatPaw 风格 Node 视频源格式。该现象属于共享底层源格式兼容，
+并不代表 OKVideoMac 支持、兼容或实现了 MiraPlay 专用协议。
+
+### CatPaw / CatPawOpen
+
+OKVideoMac 实现了 CatVod/CatPaw 风格 Node 视频接口的兼容子集，包括 bundle
+`start`/`stop` 模型、loopback HTTP runtime、`/config`、`video.sites` 和
+`/spider/<key>/<method>` 的 home/category/detail/search/play 路径。
+
+当前不应视为完整 CatPawOpen client，原因包括：
+
+- 未实现 CatPawOpen 的 read、comic、music、pan 内容模块；
+- 没有对完整官方 CatPawOpen corpus 作兼容保证；
+- 公开 CatPawOpen 实现中的 `/check` 与当前 Node runtime 要求的 `/health` 存在差异；
+- 这里只确认视频接口子集，不提供协议级完整兼容保证。
+
+## Parsed-only 字段
+
+| 字段 | 当前结论 |
+| --- | --- |
+| 顶层 `flags` | 可解析；不作为通用解析器选择器。解析器匹配使用 `parse.ext.flag` |
+| `proxy` / `doh` / `rules` / `hosts` / `ads` | 可解析或保留；没有确认到完整功能执行链 |
+| `ijk` | 作为未知字段保留，不表示支持上游 IJK 配置语义 |
+| `danmaku` | 已接入播放层；只接受实现支持的源声明、XML/JSON payload 或显式配置的服务，不代表任意上游弹幕协议都兼容 |
+| 未知字段 | 可以 round-trip；不得据此推导功能支持 |
+
+## 搜索、详情与状态恢复
+
+| 能力 | 状态 | 说明 |
+| --- | --- | --- |
+| 多站聚合搜索 | Supported | 每次搜索拥有独立 session；取消后保留结果，支持有界续页，迟到回调不能覆盖新搜索 |
+| 搜索逐层返回 | Supported | Back、Esc、Command-[ 一致：执行中先停止，再返回搜索前页面 |
+| 详情请求隔离 | Supported | 配置、站点、影片和请求代际共同决定结果所有权 |
+| 长剧集分页 | Supported | 大集数按范围分段，已覆盖 120 集与多线路 |
+| 历史 / 收藏恢复 | Supported | 保留配置、站点和稳定媒体身份；旧记录迁移，无法核验来源时要求显式修复 |
+| 便携备份恢复 | Supported | schema v4 包含配置、历史、收藏和稳定弹幕绑定；不包含明文账号凭据、运行时 URL、Header/Cookie 或代理 lease |
+
+## 网盘授权与转存
+
+缺少凭据、账号 API 明确返回 401/403 或适配器上报结构化授权事件时，App 会打开
+对应网盘的原生授权 Sheet。目录重复、限流、网络错误、媒体 CDN 403 或分享 token
+失效不会一概被当作账号未授权。授权完成后只允许当前仍有效的播放请求自动重试一次。
+
+夸克转存目录以稳定账号身份绑定，本次 Cookie 自动续期或同账号重新扫码不会产生
+新的账号 scope。账本记录缺失或目录 FID 失效时先查询并复用已有 `OKVideoMac` 与
+安装 UUID 子目录；并发创建冲突会重新发现。清理始终只删除 receipt 中准确记录的
+`savedFID`，不会扫描、合并或清空整个目录。其他网盘适配器仍以各自已实现接口为准，
+不应从夸克行为推导相同的目录保证。
+
+## 已知限制
+
+- TVBox/FongMi 顶层 `lives` 尚未接入独立 Live importer；
+- parser type 2、3、4 可解析但不会执行；
+- 顶层 `flags` 不作为通用解析器选择器；
+- `proxy/doh/rules/hosts/ads` 没有确认到完整执行链；
+- QuickJS `proxy/sniffer/isVideo` 没有完整 Provider dispatch；
+- CatPawOpen read/comic/music/pan 未实现，`/check` 与当前 `/health` 行为不同；
+- Android Bridge 仅为受支持的 `csp_` Java/Dex 源所需；Managed API 35 Runtime
+  在 macOS 12、13、15 尚未获得真实机器 Emulator E2E；
+- XML CMS 自动化覆盖窄于 JSON CMS；
+- Xtream EPG 受服务端数据质量和请求窗口限制；不支持 catchup/timeshift、
+  `direct_source` 或 DRM；
+- 弹幕服务只覆盖已实现的 XML/JSON 和 CatPaw 兼容子集；第三方服务必须由用户配置；
+- 实际播放仍取决于 libmpv、codec、服务器和媒体行为。
+
+## 测试覆盖
+
+当前兼容性结论来自自动化测试、静态调用链确认和 Maintainer 实际源验证，覆盖：
+
+- Native CMS JSON 的首页、分类、详情、搜索与播放地址映射；
+- CMS XML 核心 class/list 映射；
+- FongMi 包装配置和 type 4 参数编码；
+- QuickJS 方法与参数映射；
+- Node `video.sites` 归一化、`indexs` 首页路由、聚合搜索限流和播放 Range 选择；
+- Android Bridge 方法/代理映射；
+- M3U/TXT/JSON 直播解析；
+- XMLTV/gzip/缓存、Native Xtream short EPG 和有限 Full Guide demand；
+- 弹幕 XML/JSON 解析、来源优先级、剧集匹配、绑定隔离和播放器时钟；
+- direct、JSON parser、Web sniff 和 fallback 播放解析。
+
+项目没有声称已经测试完整公开 TVBox、FongMi、MiraPlay 或 CatPawOpen 源 corpus。
+
+## 远程 Node bundle 信任规则
+
+- HTTPS bundle 可沿用现有 `.js.md5` 地址；下载后仍保存并复验内部 SHA-256。
+- 如果 MD5 文件或可执行脚本重定向后的最终 URL 任一为 HTTP，配置地址必须携带可信 SHA-256：
+  `http://example.com/index.js.md5#sha256=<64位十六进制>`。
+- 建议同时声明源身份和版本，例如：
+  `#sha256=<64位>&source=my-source&version=2026.08.12`。URL、源身份和版本共同参与缓存隔离；版本更新必须提供新内容对应的 hash。
+- URL fragment 只用于本地信任判断，不随网络请求发送。缓存文件每次进入执行路径都会重新计算 MD5 和 SHA-256。
+- 该规则只约束会由 Node 执行的 `.js.md5` bundle；普通 HTTP 配置、影视 API、M3U8、直播、图片、字幕和 XMLTV 不受影响。
+
+## 播放器
+
+| 能力 | 状态 | 证据与限制 |
+| --- | --- | --- |
+| libmpv Client / Render API | Supported | arm64/macOS 12 Release 构建、动态依赖闭包、实机播放和生命周期实验通过 |
+| 点播、直播和基本控制 | Supported | 播放/暂停、Seek、音量、静音、倍速、切集和全屏已接入 |
+| 原生弹幕 | Supported | 源/导入/服务来源、匹配和校准已接入；渲染由显示刷新同步，服务端可用性不作保证 |
+| 媒体 Header | Supported | 使用结构化 mpv node array 传递，不拼接命令字符串 |
+| 音轨和字幕轨 | Supported | 轨道列表、偏好匹配和切换策略有单元测试 |
+| 外挂字幕 | Partial | `sub-add` 路径已接入；仍需扩大字符集、容器和远程字幕样本覆盖 |
+| 截图、画面比例和硬解 | Supported | UI 与 mpv 命令已接入，Release 实机播放路径通过 |
+| 初始加载失败自动换源 | Supported | 最多 8 次去重尝试、下一解析器/线路和旧请求隔离有测试 |
+| 播放中途断流自动恢复 | Partial | 初始加载失败已覆盖，长播中途断流的多源自动恢复尚未完整验证 |
+| 退出播放器完整销毁 | Supported | 10 轮 A/B 与 8 类极端生命周期场景通过；保留 `warmStop` 回退开关 |
+
+## 平台与发布
+
+App 支持范围和 Managed Android Runtime 实机验证是两个不同结论：
+
+| macOS | App / deployment | Managed API 35 Runtime 实机状态 |
+| --- | --- | --- |
+| 12 | Supported（静态构建目标） | 尚未取得真实机器 Emulator E2E |
+| 13 | Supported（静态构建目标） | 尚未取得真实机器 Emulator E2E |
+| 14 | Supported | Verified：Apple M1 / macOS 14.8.8 |
+| 15 | Supported（静态构建目标） | 尚未取得真实机器 Emulator E2E |
+
+这里的 “Supported（静态构建目标）” 包括 deployment target 和 API availability
+门禁，不等价于 Android Guest、HVF、gfxstream 与 ADB 的对应实机组合已经验证。
+
+| 能力 | 状态 | 证据与限制 |
+| --- | --- | --- |
+| Apple Silicon / arm64 | Supported | App 和全部 bundled Mach-O 均在打包时强制验证 arm64 |
+| macOS 12.0+ | Supported | Info.plist 和全部 Mach-O `minos` 由包体脚本验证 |
+| Intel Mac / Universal Binary | Unsupported | 当前只交付 arm64 |
+| 本地 Hardened Runtime 包 | Supported | ad-hoc 签名，仅主 App 使用开发期 Library Validation 例外 |
+| Developer ID 分发 | Supported | 0.7.3（Build 129）正式 DMG 使用 Developer ID Application 与 secure timestamp 签名，Hardened Runtime、嵌套签名和权限边界由发布门禁验证 |
+| Notarization / Staple / Gatekeeper | Supported | 0.7.3（Build 129）已取得 Apple notarization `Accepted`，并通过 staple、`stapler validate` 与 Gatekeeper |
+| 0.6.0（Build 100）正式发布 | Supported | DMG、内部 ZIP、源码、四份 SBOM、Notices 和 APK 由外层 manifest/SHA256SUMS 绑定到 tag `v0.6.0` 指向的 exact commit |
+| 0.6.1（Build 101）正式发布 | Supported | 1060 项自动测试通过，9 项条件测试跳过；tag `v0.6.1` 固定提交 `25155f52fb8c416f3245c9a829a93175dec9857b`；正式 DMG 独立完成公证、Gatekeeper 与安装 smoke |
+| 0.7.3（Build 129）正式发布 | Supported | tag v0.7.3 固定 55ffa9d；Developer ID、公证、Staple、Gatekeeper 与安装 smoke 已完成，见 GitHub Release |
+| 0.8.0（Build 130）发布候选 | Pending formal distribution | 模块验证与本地 Release 包结果见 0.8.0 发布就绪记录；正式 tag、分发签名、公证与上传待执行 |
+| App Sandbox | Not Applicable | 当前为 Developer ID 外部分发目标；Sandbox 与 Hardened Runtime 是不同边界 |
+
+## 明确不提供
+
+| 能力 | 状态 | 说明 |
+| --- | --- | --- |
+| DRM 绕过 | Not Applicable | 项目不提供 DRM 密钥或绕过能力 |
+| TVBus / ForceTech | Unsupported | 私有 P2P/闭源引擎不在当前实现范围 |
+| DLNA | Unsupported | 尚未实现设备发现和投屏流程 |
+| 本地公开 HTTP API | Unsupported | Node 内部回环服务不属于公开对外 API |
+
+0.8.0 完整前后行为对照见 [发布说明](../../../../Docs/RELEASE_NOTES_0.8.0.md)，
+本轮结果及前序证据边界见 [发布就绪记录](../../../../Docs/RELEASE_READINESS_0.8.0.md)。

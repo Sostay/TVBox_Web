@@ -1,0 +1,11 @@
+<resources>
+    <color name="black">#FF0B0F19</color>
+    <color name="dark_panel">#FF111827</color>
+    <color name="indigo_500">#FF6366F1</color>
+    <color name="indigo_600">#FF4F46E5</color>
+    <color name="teal_400">#FF38BDF8</color>
+    <color name="emerald_500">#FF10B981</color>
+    <color name="rose_500">#FFF43F5E</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="text_muted">#FF9CA3AF</color>
+</resources>

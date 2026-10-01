@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">TVBox Web 服务端</string>
+    <string name="server_running">服务正在运行</string>
+    <string name="server_stopped">服务已停止</string>
+    <string name="start_server">启动服务</string>
+    <string name="stop_server">停止服务</string>
+    <string name="lan_address_hint">在局域网内任意电脑、手机或平板浏览器中访问以下地址即可观影：</string>
+</resources>
