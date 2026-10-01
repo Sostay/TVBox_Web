@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TVBox Web 服务端</string>
+    <string name="app_name">TVBox Web</string>
     <string name="server_running">服务正在运行</string>
     <string name="server_stopped">服务已停止</string>
     <string name="start_server">启动服务</string>

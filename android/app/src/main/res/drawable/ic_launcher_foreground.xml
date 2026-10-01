@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- TV Screen / Outer Rounded Frame -->
+    <path
+        android:pathData="M30,34 h48 c4.4,0 8,3.6 8,8 v28 c0,4.4 -3.6,8 -8,8 h-48 c-4.4,0 -8,-3.6 -8,-8 v-28 c0,-4.4 3.6,-8 8,-8 z"
+        android:strokeWidth="3.5">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="22"
+                android:startY="34"
+                android:endX="86"
+                android:endY="78"
+                android:type="linear">
+                <item android:color="#38BDF8" android:offset="0.0" />
+                <item android:color="#818CF8" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- TV Stand -->
+    <path
+        android:pathData="M46,78 L42,84 h24 L62,78"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="42"
+                android:startY="78"
+                android:endX="66"
+                android:endY="84"
+                android:type="linear">
+                <item android:color="#818CF8" android:offset="0.0" />
+                <item android:color="#4F46E5" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Play Triangle Button in Center -->
+    <path
+        android:pathData="M48,46 L64,56 L48,66 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="48"
+                android:startY="46"
+                android:endX="64"
+                android:endY="66"
+                android:type="linear">
+                <item android:color="#38BDF8" android:offset="0.0" />
+                <item android:color="#818CF8" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Web / Signal Wave Arc on top right -->
+    <path
+        android:pathData="M74,27 C78,29 82,33 84,37"
+        android:strokeWidth="2.5"
+        android:strokeColor="#38BDF8"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M78,21 C84,24 89,30 92,36"
+        android:strokeWidth="2.5"
+        android:strokeColor="#818CF8"
+        android:strokeLineCap="round" />
+
+</vector>

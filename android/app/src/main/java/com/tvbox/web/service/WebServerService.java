@@ -120,7 +120,7 @@ public class WebServerService extends Service {
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
         );
 
-        String ip = NetworkUtils.getLocalIpAddress();
+        String ip = NetworkUtils.getLocalIpAddress(this);
         String contentText = "局域网访问地址: http://" + ip + ":" + SERVER_PORT;
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)

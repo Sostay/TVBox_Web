@@ -67,7 +67,12 @@ public class WebServer extends NanoHTTPD {
                 return handleStreamProxy(session);
             }
 
-            // 3. Config API
+            // 3. Fetch external source config / proxy
+            if (uri.startsWith("/api/fetch_source")) {
+                return handleFetchSource(session);
+            }
+
+            // 4. Config API
             if (uri.equals("/api/config")) {
                 JsonObject cfg = mSpiderManager.getConfig();
                 String json = cfg != null ? cfg.toString() : "{\"sites\":[]}";
@@ -257,6 +262,51 @@ public class WebServer extends NanoHTTPD {
             Response resp = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Proxy Error: " + e.getMessage());
             addCorsHeaders(resp);
             return resp;
+        }
+    }
+
+    private Response handleFetchSource(IHTTPSession session) {
+        try {
+            Map<String, String> parms = session.getParms();
+            String targetUrl = parms.get("url");
+            if (TextUtils.isEmpty(targetUrl)) {
+                return jsonResponse("{\"error\":\"Missing url parameter\"}", Response.Status.BAD_REQUEST);
+            }
+            targetUrl = URLDecoder.decode(targetUrl, "UTF-8");
+
+            Request req = new Request.Builder()
+                    .url(targetUrl)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .build();
+
+            okhttp3.Response okResp = mHttp.newCall(req).execute();
+            if (!okResp.isSuccessful() || okResp.body() == null) {
+                return jsonResponse("{\"error\":\"Failed to fetch source: HTTP " + okResp.code() + "\"}", Response.Status.BAD_GATEWAY);
+            }
+
+            String content = okResp.body().string().trim();
+            // Handle Base64 encoded configs if applicable
+            if (!content.startsWith("{") && !content.startsWith("[")) {
+                try {
+                    byte[] decoded = android.util.Base64.decode(content, android.util.Base64.DEFAULT);
+                    String decodedStr = new String(decoded, StandardCharsets.UTF_8).trim();
+                    if (decodedStr.startsWith("{") || decodedStr.startsWith("[")) {
+                        content = decodedStr;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+
+            final String finalContent = content;
+            final String finalUrl = targetUrl;
+            mSpiderManager.loadConfigContent(finalUrl, finalContent);
+
+            Response resp = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", content);
+            addCorsHeaders(resp);
+            return resp;
+        } catch (Exception e) {
+            Log.e(TAG, "fetch_source error: " + e.getMessage(), e);
+            return jsonResponse("{\"error\":\"" + e.getMessage() + "\"}", Response.Status.INTERNAL_ERROR);
         }
     }
 

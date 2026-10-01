@@ -565,17 +565,22 @@
 
       try {
         if (src.url.includes('.js.md5')) {
-          // Case 1: Node bundle source -> load from local Fastify backend
+          // Case 1: Node bundle source -> load from local Fastify backend (Windows环境)
           const res = await fetch('/api/config');
-          if (!res.ok) throw new Error('无法连接 Node 后台引擎 (9988)');
+          if (!res.ok) throw new Error('无法连接后台配置服务');
           currentConfig = await res.json();
-          renderSitesDropdown(currentConfig.video?.sites || []);
+          const sites = currentConfig.video?.sites || currentConfig.sites || [];
+          if (!sites.length) {
+            showToast('提示：此 .js.md5 源为 Node 专用，当前处于 Android 端，请添加标准 TVBox JSON 订阅源');
+          }
+          renderSitesDropdown(sites);
         } else {
-          // Case 2: External JSON source (e.g. user subscribed json) -> fetch through gateway proxy
+          // Case 2: External JSON source (e.g. user subscribed json) -> fetch through gateway/android proxy
           const res = await fetch(`/api/fetch_source?url=${encodeURIComponent(src.url)}`);
           if (!res.ok) throw new Error(`获取 JSON 源失败 (HTTP ${res.status})`);
           currentConfig = await res.json();
-          renderSitesDropdown(currentConfig.sites || []);
+          const sites = currentConfig.sites || currentConfig.video?.sites || [];
+          renderSitesDropdown(sites);
         }
       } catch (err) {
         showToast('加载源失败: ' + err.message);

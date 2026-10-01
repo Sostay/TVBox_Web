@@ -59,8 +59,13 @@ public class SpiderManager {
     public synchronized boolean loadConfig(String configJsonOrUrl) {
         try {
             String jsonStr;
+            String baseUrl = null;
             if (configJsonOrUrl.startsWith("http://") || configJsonOrUrl.startsWith("https://")) {
-                Request req = new Request.Builder().url(configJsonOrUrl).build();
+                baseUrl = configJsonOrUrl;
+                Request req = new Request.Builder()
+                        .url(configJsonOrUrl)
+                        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                        .build();
                 try (Response resp = mHttp.newCall(req).execute()) {
                     if (!resp.isSuccessful() || resp.body() == null) return false;
                     jsonStr = resp.body().string();
@@ -69,17 +74,49 @@ public class SpiderManager {
                 jsonStr = configJsonOrUrl;
             }
 
-            mCurrentConfig = mGson.fromJson(jsonStr, JsonObject.class);
+            return loadConfigContent(baseUrl, jsonStr);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load config: " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    public synchronized boolean loadConfigContent(String baseUrl, String jsonStr) {
+        try {
+            if (jsonStr == null) return false;
+            String cleanStr = jsonStr.trim();
+            // Handle Base64 encoded configs
+            if (!cleanStr.startsWith("{") && !cleanStr.startsWith("[")) {
+                try {
+                    byte[] decoded = android.util.Base64.decode(cleanStr, android.util.Base64.DEFAULT);
+                    String decodedStr = new String(decoded, java.nio.charset.StandardCharsets.UTF_8).trim();
+                    if (decodedStr.startsWith("{") || decodedStr.startsWith("[")) {
+                        cleanStr = decodedStr;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+
+            mCurrentConfig = mGson.fromJson(cleanStr, JsonObject.class);
             if (mCurrentConfig == null) return false;
 
             if (mCurrentConfig.has("spider")) {
                 String rawSpider = mCurrentConfig.get("spider").getAsString();
                 String spiderDownloadUrl = rawSpider.split(";")[0].trim();
-                initSpiderDex(spiderDownloadUrl);
+                // Resolve relative spider URL if necessary
+                if (!spiderDownloadUrl.startsWith("http://") && !spiderDownloadUrl.startsWith("https://") && baseUrl != null) {
+                    if (spiderDownloadUrl.startsWith("./")) spiderDownloadUrl = spiderDownloadUrl.substring(2);
+                    int lastSlash = baseUrl.lastIndexOf('/');
+                    if (lastSlash != -1) {
+                        spiderDownloadUrl = baseUrl.substring(0, lastSlash + 1) + spiderDownloadUrl;
+                    }
+                }
+                final String finalSpiderUrl = spiderDownloadUrl;
+                new Thread(() -> initSpiderDex(finalSpiderUrl)).start();
             }
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to load config: " + e.getMessage(), e);
+            Log.e(TAG, "Failed to parse config content: " + e.getMessage(), e);
             return false;
         }
     }
