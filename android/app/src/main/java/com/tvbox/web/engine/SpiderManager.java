@@ -112,7 +112,7 @@ public class SpiderManager {
                     }
                 }
                 final String finalSpiderUrl = spiderDownloadUrl;
-                new Thread(() -> initSpiderDex(finalSpiderUrl)).start();
+                initSpiderDex(finalSpiderUrl);
             }
             return true;
         } catch (Exception e) {
@@ -144,8 +144,14 @@ public class SpiderManager {
             File optDir = new File(mContext.getCodeCacheDir(), "dex_opt");
             if (!optDir.exists()) optDir.mkdirs();
 
+            File libDir = new File(mContext.getFilesDir(), "spider_libs");
+            if (!libDir.exists()) libDir.mkdirs();
+
             Log.i(TAG, "Downloading spider jar from: " + spiderUrl);
-            Request req = new Request.Builder().url(spiderUrl).build();
+            Request req = new Request.Builder()
+                    .url(spiderUrl)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .build();
             try (Response resp = mHttp.newCall(req).execute()) {
                 if (resp.isSuccessful() && resp.body() != null) {
                     try (InputStream in = resp.body().byteStream();
@@ -159,16 +165,49 @@ public class SpiderManager {
                 }
             }
 
+            // Extract native libs (.so) and guard resources from the downloaded jar/zip
+            try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(jarFile)) {
+                java.util.Enumeration<? extends java.util.zip.ZipEntry> entries = zf.entries();
+                while (entries.hasMoreElements()) {
+                    java.util.zip.ZipEntry entry = entries.nextElement();
+                    String name = entry.getName();
+                    if (name.endsWith(".so")) {
+                        File soOut = new File(libDir, new File(name).getName());
+                        try (InputStream zis = zf.getInputStream(entry);
+                             FileOutputStream zos = new FileOutputStream(soOut)) {
+                            byte[] b = new byte[8192];
+                            int l;
+                            while ((l = zis.read(b)) != -1) {
+                                zos.write(b, 0, l);
+                            }
+                        }
+                        soOut.setReadOnly();
+                    } else if (name.endsWith(".guard")) {
+                        File guardOut = new File(mContext.getFilesDir(), new File(name).getName());
+                        try (InputStream zis = zf.getInputStream(entry);
+                             FileOutputStream zos = new FileOutputStream(guardOut)) {
+                            byte[] b = new byte[8192];
+                            int l;
+                            while ((l = zis.read(b)) != -1) {
+                                zos.write(b, 0, l);
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Zip extraction warning: " + e.getMessage());
+            }
+
             // Android 14+ enforces read-only dynamically loaded DEX files
             jarFile.setReadOnly();
 
             mClassLoader = new DexClassLoader(
                     jarFile.getAbsolutePath(),
                     optDir.getAbsolutePath(),
-                    null,
+                    libDir.getAbsolutePath(),
                     mContext.getClassLoader()
             );
-            Log.i(TAG, "DexClassLoader initialized successfully!");
+            Log.i(TAG, "DexClassLoader initialized successfully with libDir: " + libDir.getAbsolutePath());
         } catch (Exception e) {
             Log.e(TAG, "Error initializing DexClassLoader: " + e.getMessage(), e);
         }

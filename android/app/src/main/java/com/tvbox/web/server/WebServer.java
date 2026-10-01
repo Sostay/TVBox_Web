@@ -115,7 +115,7 @@ public class WebServer extends NanoHTTPD {
                 return jsonResponse("{\"error\":\"Invalid spider URL format\"}", Response.Status.BAD_REQUEST);
             }
 
-            String siteKey = parts[0];
+            String siteKey = URLDecoder.decode(parts[0], "UTF-8");
             String action = parts[parts.length - 1]; // e.g. home, category, detail, play, search
 
             // Read POST body JSON
@@ -170,12 +170,17 @@ public class WebServer extends NanoHTTPD {
     }
 
     private JsonObject findSiteByKey(String key) {
+        if (key == null) return null;
         JsonObject cfg = mSpiderManager.getConfig();
         if (cfg == null || !cfg.has("sites")) return null;
         JsonArray sites = cfg.getAsJsonArray("sites");
+        String trimmedKey = key.trim();
         for (int i = 0; i < sites.size(); i++) {
             JsonObject s = sites.get(i).getAsJsonObject();
-            if (s.has("key") && s.get("key").getAsString().equals(key)) {
+            String sKey = s.has("key") ? s.get("key").getAsString() : "";
+            String sName = s.has("name") ? s.get("name").getAsString() : "";
+            if (sKey.equalsIgnoreCase(trimmedKey) || sName.equalsIgnoreCase(trimmedKey)
+                    || sKey.contains(trimmedKey) || trimmedKey.contains(sKey)) {
                 return s;
             }
         }
