@@ -38,6 +38,7 @@ public class SpiderManager {
     private JsonObject mCurrentConfig;
     private String mSpiderUrl = "";
     private volatile String mLastSpiderError = null;
+    private volatile Method mProxyMethod = null;
 
     private SpiderManager(Context context) {
         this.mContext = context.getApplicationContext();
@@ -239,6 +240,15 @@ public class SpiderManager {
             } catch (Throwable t) {
                 Log.w(TAG, "Init.init(context) invoke warning: " + t.getMessage());
             }
+
+            // Bind Proxy method if present
+            try {
+                Class<?> proxyClz = mClassLoader.loadClass("com.github.catvod.spider.Proxy");
+                mProxyMethod = proxyClz.getMethod("proxy", Map.class);
+                Log.i(TAG, "Bound com.github.catvod.spider.Proxy.proxy(Map) successfully!");
+            } catch (Throwable t) {
+                Log.w(TAG, "Proxy.proxy(Map) bind warning: " + t.getMessage());
+            }
         } catch (Exception e) {
             mLastSpiderError = "DexClassLoader初始化异常: " + e.getMessage();
             Log.e(TAG, mLastSpiderError, e);
@@ -405,6 +415,14 @@ public class SpiderManager {
         } catch (Exception e) {
             Log.e(TAG, "callSearch error: " + e.getMessage(), e);
             return "{}";
+        }
+    public Object[] callProxy(Map<String, String> params) {
+        if (mProxyMethod == null) return null;
+        try {
+            return (Object[]) mProxyMethod.invoke(null, params);
+        } catch (Exception e) {
+            Log.e(TAG, "callProxy error: " + e.getMessage(), e);
+            return null;
         }
     }
 }

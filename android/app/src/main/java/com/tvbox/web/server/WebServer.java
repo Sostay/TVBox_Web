@@ -80,6 +80,11 @@ public class WebServer extends NanoHTTPD {
                 return handleStreamProxy(session);
             }
 
+            // 2.1 Native Spider /proxy endpoint
+            if (uri.startsWith("/proxy")) {
+                return handleNativeSpiderProxy(session);
+            }
+
             // 3. Fetch external source config / proxy
             if (uri.startsWith("/api/fetch_source")) {
                 return handleFetchSource(session);
@@ -280,6 +285,33 @@ public class WebServer extends NanoHTTPD {
             Response resp = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Proxy Error: " + e.getMessage());
             addCorsHeaders(resp);
             return resp;
+        }
+    }
+
+    private Response handleNativeSpiderProxy(IHTTPSession session) {
+        try {
+            Map<String, String> params = new HashMap<>(session.getParms());
+            params.putAll(session.getHeaders());
+            Object[] rs = mSpiderManager.callProxy(params);
+            if (rs == null || rs.length < 3) {
+                return jsonResponse("{\"error\":\"Invalid native proxy response\"}", Response.Status.BAD_REQUEST);
+            }
+            int code = (Integer) rs[0];
+            String mime = (String) rs[1];
+            InputStream is = (InputStream) rs[2];
+            Response.Status status = Response.Status.lookup(code);
+            if (status == null) status = Response.Status.OK;
+            Response resp = newChunkedResponse(status, mime, is);
+            if (rs.length > 3 && rs[3] instanceof Map) {
+                for (Map.Entry<?, ?> entry : ((Map<?, ?>) rs[3]).entrySet()) {
+                    resp.addHeader(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+                }
+            }
+            addCorsHeaders(resp);
+            return resp;
+        } catch (Exception e) {
+            Log.e(TAG, "Native spider proxy error: " + e.getMessage(), e);
+            return jsonResponse("{\"error\":\"" + e.getMessage() + "\"}", Response.Status.INTERNAL_ERROR);
         }
     }
 
