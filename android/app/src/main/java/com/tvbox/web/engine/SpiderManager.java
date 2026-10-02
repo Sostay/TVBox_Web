@@ -416,6 +416,8 @@ public class SpiderManager {
             Log.e(TAG, "callSearch error: " + e.getMessage(), e);
             return "{}";
         }
+    }
+
     public Object[] callProxy(Map<String, String> params) {
         if (mProxyMethod == null) return null;
         try {
