@@ -33,10 +33,7 @@
     }
   </script>
   <style>
-    /* Zero-Gutter Overlay Scrollbar (Mac/iOS Overlay Style: 零占宽悬浮透明) */
-    html, body, div, main, aside, section, article, nav {
-      overflow-y: overlay;
-    }
+    /* Clean Transparent Auto-hiding Scrollbar (Zero layout gutter & zero track color) */
     * {
       scrollbar-width: thin;
       scrollbar-color: transparent transparent;
@@ -48,20 +45,16 @@
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
-      background-color: transparent !important;
-    }
-    ::-webkit-scrollbar-track {
       background: transparent !important;
       background-color: transparent !important;
-      border: none !important;
     }
-    ::-webkit-scrollbar-track-piece {
-      background: transparent !important;
-      background-color: transparent !important;
-      border: none !important;
-    }
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-track-piece,
     ::-webkit-scrollbar-corner {
       background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
     }
     ::-webkit-scrollbar-thumb {
       background: transparent;
@@ -76,6 +69,14 @@
     }
     *:hover::-webkit-scrollbar-thumb:hover {
       background-color: rgba(99, 102, 241, 0.9);
+    }
+    /* Specific scrollable containers use overlay where supported */
+    #detailScrollPanel,
+    #quickEpGrid,
+    #historyDrawerList,
+    #sourcesList,
+    #searchHistoryList {
+      overflow-y: overlay;
     }
     .line-clamp-2 {
       display: -webkit-box;
@@ -418,7 +419,7 @@
           <div id="ctrlTime" class="text-[11px] sm:text-xs font-mono text-gray-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] select-none flex-shrink-0 whitespace-nowrap">00:00 / 00:00</div>
 
           <!-- Progress Bar Container -->
-          <div id="ctrlProgressContainer" class="relative flex-1 h-6 flex items-center cursor-pointer group/prog select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+          <div id="ctrlProgressContainer" class="relative flex-1 mx-1.5 h-6 flex items-center cursor-pointer group/prog select-none overflow-visible drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
             <!-- Background track -->
             <div class="relative w-full h-1 sm:h-1.5 group-hover/prog:h-2 sm:group-hover/prog:h-2.5 bg-white/20 rounded-full overflow-hidden transition-all duration-150">
               <!-- Buffered bar -->
@@ -427,13 +428,13 @@
               <div id="ctrlPlayedBar" class="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full" style="width: 0%;"></div>
             </div>
             <!-- Slider Thumb -->
-            <div id="ctrlProgressThumb" class="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 -ml-1.5 rounded-full bg-white shadow-lg opacity-0 group-hover/prog:opacity-100 transition-opacity duration-150 pointer-events-none" style="left: 0%;"></div>
+            <div id="ctrlProgressThumb" class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-lg opacity-0 group-hover/prog:opacity-100 transition-opacity duration-150 pointer-events-none" style="left: 0%;"></div>
             <!-- Progress Hover Tooltip -->
             <div id="ctrlProgressTip" class="absolute bottom-full mb-1.5 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-black/85 border border-white/20 text-[10px] font-mono text-white opacity-0 pointer-events-none transition-opacity duration-150 whitespace-nowrap shadow-md">00:00</div>
           </div>
 
           <!-- Volume Button & Wheel -->
-          <div class="relative flex items-center group/vol">
+          <div class="relative flex items-center group/vol overflow-visible">
             <button id="ctrlMuteBtn" onclick="toggleMute()" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="静音 / 取消静音 (滚轮上下调节音量)">
               <svg id="ctrlVolumeIcon" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
             </button>

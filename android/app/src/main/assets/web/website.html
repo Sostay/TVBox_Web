@@ -8,10 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <style>
-    /* Zero-Gutter Overlay Scrollbar (零占宽悬浮透明) */
-    html, body, div, .wrap, .cards, textarea {
-      overflow-y: overlay;
-    }
+    /* Clean Transparent Auto-hiding Scrollbar */
     * {
       scrollbar-width: thin;
       scrollbar-color: transparent transparent;
@@ -23,20 +20,16 @@
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
-      background-color: transparent !important;
-    }
-    ::-webkit-scrollbar-track {
       background: transparent !important;
       background-color: transparent !important;
-      border: none !important;
     }
-    ::-webkit-scrollbar-track-piece {
-      background: transparent !important;
-      background-color: transparent !important;
-      border: none !important;
-    }
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-track-piece,
     ::-webkit-scrollbar-corner {
       background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
     }
     ::-webkit-scrollbar-thumb {
       background: transparent;
