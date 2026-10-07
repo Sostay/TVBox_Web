@@ -177,11 +177,10 @@
     <div class="flex items-center gap-1.5 sm:gap-2">
       
 
-      <!-- Play History Button -->
-      <button id="openHistoryBtn" class="relative flex items-center gap-1.5 px-2.5 py-1.5 bg-dark-750 hover:bg-dark-700 border border-gray-700 rounded-lg text-xs font-medium text-gray-200 transition shadow-sm" title="播放历史记录">
+      <!-- Play History Button (Pure Icon style matching Refresh Button) -->
+      <button id="openHistoryBtn" class="relative p-2 bg-dark-750 hover:bg-dark-700 border border-gray-700 rounded-lg text-gray-300 hover:text-white transition shadow-sm cursor-pointer" title="播放历史记录">
         <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span class="hidden sm:inline">历史</span>
-        <span id="historyBadge" class="hidden text-[10px] bg-indigo-600 text-white px-1.5 py-0.2 rounded-full font-mono">0</span>
+        <span id="historyBadge" class="hidden absolute -top-1 -right-1 text-[9px] bg-indigo-600 text-white min-w-[15px] h-3.5 px-0.5 rounded-full font-mono flex items-center justify-center border border-dark-900 shadow">0</span>
       </button>
 
       <!-- Source Quick Switch Split Button -->
