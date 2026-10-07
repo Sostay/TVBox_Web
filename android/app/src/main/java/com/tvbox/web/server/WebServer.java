@@ -175,7 +175,16 @@ public class WebServer extends NanoHTTPD {
                 case "category":
                     String tid = body.has("tid") ? body.get("tid").getAsString() : "1";
                     String pg = body.has("pg") ? body.get("pg").getAsString() : "1";
-                    result = mSpiderManager.callCategory(apiClass, ext, tid, pg);
+                    HashMap<String, String> extendMap = new HashMap<>();
+                    if (body.has("extend") && body.get("extend").isJsonObject()) {
+                        JsonObject extObj = body.getAsJsonObject("extend");
+                        for (Map.Entry<String, com.google.gson.JsonElement> entry : extObj.entrySet()) {
+                            if (entry.getValue() != null && !entry.getValue().isJsonNull()) {
+                                extendMap.put(entry.getKey(), entry.getValue().getAsString());
+                            }
+                        }
+                    }
+                    result = mSpiderManager.callCategory(apiClass, ext, tid, pg, extendMap);
                     break;
                 case "detail":
                     String vodId = body.has("id") ? body.get("id").getAsString() : "";

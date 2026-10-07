@@ -231,6 +231,11 @@
     <button class="cat-pill active px-3.5 py-1 rounded-full text-xs font-medium bg-indigo-600 text-white shadow-sm" data-tid="">推荐首页</button>
   </div>
 
+  <!-- Dynamic Category Filters Sub-header (Filter Tags Panel) -->
+  <div id="filterPanel" class="hidden bg-dark-850/95 border-b border-gray-800/80 px-3 sm:px-6 py-2.5 transition-all duration-300">
+    <div id="filterRowsContainer" class="space-y-2 text-xs max-w-[1920px] mx-auto"></div>
+  </div>
+
   <!-- Main Content Area -->
   <main class="flex-1 px-3 sm:px-6 py-5 max-w-[1920px] w-full mx-auto">
     <!-- 1. Default Empty State (No Sources) -->
@@ -302,6 +307,15 @@
 
     <!-- 5. Video Posters Grid -->
     <div id="videoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4"></div>
+
+    <!-- Infinite Scroll Loading Indicator & End Hint -->
+    <div id="infiniteLoading" class="hidden py-8 flex items-center justify-center gap-2.5 text-gray-400 text-xs select-none">
+      <div class="w-5 h-5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+      <span id="infiniteLoadingText">正在加载更多影片...</span>
+    </div>
+    <div id="noMoreDataNotice" class="hidden py-10 text-center text-xs text-gray-500 select-none">
+      <span>—— 已加载全部影片 ——</span>
+    </div>
   </main>
 
   <!-- ============================================================== -->
@@ -564,6 +578,11 @@
     let isWebFullscreen = false;
     let isDescriptionExpanded = false;
     let episodeLayoutWide = true; // Default to 4 columns for long titles
+    let currentFilters = {};
+    let currentExtend = {};
+    let currentPage = 1;
+    let hasMorePages = true;
+    let isLoadingMore = false;
 
     // Elements
     const siteSelect = document.getElementById('siteSelect');
@@ -1027,6 +1046,11 @@
     // Go Home view
     function goHome() {
       currentTid = '';
+      currentExtend = {};
+      currentPage = 1;
+      hasMorePages = false;
+      hideFilterPanel();
+      hideInfiniteNotices();
       setViewTitle(currentSite ? `${currentSite.name}` : '');
       loadSiteHome();
     }
@@ -1646,6 +1670,12 @@
           throw new Error(data.error);
         }
         currentClasses = data.class || [];
+        currentFilters = data.filters || {};
+        currentExtend = {};
+        currentPage = 1;
+        hasMorePages = false;
+        hideFilterPanel();
+        hideInfiniteNotices();
         renderCategoryBar();
         renderVideoCards(data.list || []);
       } catch (err) {
@@ -1725,26 +1755,195 @@
       });
     }
 
-    async function loadCategory(tid) {
+    // Category Filters and Infinite Scrolling Management
+    function hideFilterPanel() {
+      const panel = document.getElementById('filterPanel');
+      if (panel) panel.classList.add('hidden');
+    }
+
+    function renderFilterPanel(tid) {
+      const panel = document.getElementById('filterPanel');
+      const container = document.getElementById('filterRowsContainer');
+      if (!panel || !container) return;
+
+      const fList = currentFilters[tid] || [];
+      if (!fList || fList.length === 0) {
+        panel.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = '';
+      fList.forEach(group => {
+        const groupKey = group.key || group.name;
+        const groupName = group.name || group.key;
+        const opts = group.value || [];
+        if (!opts.length) return;
+
+        const row = document.createElement('div');
+        row.className = 'flex items-start sm:items-center gap-2 py-0.5 overflow-x-auto scrollbar-none';
+
+        const label = document.createElement('span');
+        label.className = 'text-gray-400 font-medium text-[11px] w-14 sm:w-18 flex-shrink-0 truncate select-none pt-0.5';
+        label.textContent = `${groupName}：`;
+        row.appendChild(label);
+
+        const optionsWrap = document.createElement('div');
+        optionsWrap.className = 'flex items-center gap-1.5 flex-wrap overflow-x-auto scrollbar-none py-0.5';
+
+        opts.forEach(opt => {
+          const optName = opt.n || opt.name || opt.text || opt;
+          const optVal = (opt.v !== undefined) ? opt.v : (opt.value !== undefined ? opt.value : opt);
+
+          const isSelected = (currentExtend[groupKey] === String(optVal)) ||
+            (!currentExtend[groupKey] && (optVal === '' || optName === '全部' || optName.includes('全部') || optName === '不限' || optVal === group.init));
+
+          const btn = document.createElement('button');
+          btn.className = `filter-pill px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap flex-shrink-0 transition cursor-pointer ${
+            isSelected
+              ? 'bg-indigo-600 text-white font-medium shadow-sm ring-1 ring-indigo-400/50'
+              : 'bg-dark-750 hover:bg-dark-700 text-gray-300 hover:text-white'
+          }`;
+          btn.textContent = optName;
+          btn.onclick = () => {
+            if (optVal === '' || optName === '全部' || optName.includes('全部') || optName === '不限') {
+              delete currentExtend[groupKey];
+            } else {
+              currentExtend[groupKey] = String(optVal);
+            }
+            renderFilterPanel(tid);
+            loadCategory(tid, 1, currentExtend);
+          };
+          optionsWrap.appendChild(btn);
+        });
+
+        row.appendChild(optionsWrap);
+        container.appendChild(row);
+      });
+
+      panel.classList.remove('hidden');
+    }
+
+    async function loadCategory(tid, pg = 1, extend = null) {
       if (!currentSite) return;
+      if (currentTid !== tid) {
+        currentExtend = extend || {};
+      } else if (extend !== null) {
+        currentExtend = extend;
+      }
       currentTid = tid;
+      currentPage = pg;
+      hasMorePages = true;
+      isLoadingMore = false;
+
       const catObj = currentClasses.find(c => String(c.type_id) === String(tid));
       const catName = catObj ? catObj.type_name : '';
       setViewTitle(catName ? `${catName} · ${currentSite.name || ''}` : `${currentSite.name || ''}`);
       renderCategoryBar();
+      renderFilterPanel(tid);
+      hideInfiniteNotices();
+
       setLoading(true);
       siteErrorCard.classList.add('hidden');
       videoGrid.innerHTML = '';
 
       try {
-        const data = await safeFetchJson(getSpiderApiUrl('category'), { tid, pg: 1 });
-        renderVideoCards(data.list || []);
+        const payload = { tid, pg: 1, filter: true };
+        if (Object.keys(currentExtend).length > 0) {
+          payload.extend = currentExtend;
+        }
+        const data = await safeFetchJson(getSpiderApiUrl('category'), payload);
+        const list = data.list || [];
+        renderVideoCards(list);
+        if (list.length === 0) {
+          hasMorePages = false;
+        } else if (data.pagecount && data.pagecount <= 1) {
+          hasMorePages = false;
+          showNoMoreNotice();
+        }
       } catch (err) {
         handleSiteError(err);
       } finally {
         setLoading(false);
       }
     }
+
+    // Infinite Scrolling Pagination Loader
+    async function loadNextCategoryPage() {
+      if (!currentTid || !currentSite || isLoadingMore || !hasMorePages) return;
+      if (!playerModal.classList.contains('hidden')) return;
+
+      isLoadingMore = true;
+      const nextPage = currentPage + 1;
+      showInfiniteLoading(nextPage);
+
+      try {
+        const payload = { tid: currentTid, pg: nextPage, filter: true };
+        if (Object.keys(currentExtend).length > 0) {
+          payload.extend = currentExtend;
+        }
+        const data = await safeFetchJson(getSpiderApiUrl('category'), payload);
+        const newList = data.list || [];
+
+        if (newList.length > 0) {
+          currentPage = nextPage;
+          newList.forEach(item => {
+            const card = createVideoCardElement(item, currentSite);
+            videoGrid.appendChild(card);
+          });
+          if (data.pagecount && currentPage >= data.pagecount) {
+            hasMorePages = false;
+            showNoMoreNotice();
+          }
+        } else {
+          hasMorePages = false;
+          showNoMoreNotice();
+        }
+      } catch (err) {
+        console.warn('[Pagination] Next page error:', nextPage, err);
+        hasMorePages = false;
+      } finally {
+        isLoadingMore = false;
+        hideInfiniteLoading();
+      }
+    }
+
+    function showInfiniteLoading(page) {
+      const el = document.getElementById('infiniteLoading');
+      const text = document.getElementById('infiniteLoadingText');
+      if (el) el.classList.remove('hidden');
+      if (text) text.textContent = `正在加载第 ${page} 页内容...`;
+    }
+
+    function hideInfiniteLoading() {
+      const el = document.getElementById('infiniteLoading');
+      if (el) el.classList.add('hidden');
+    }
+
+    function showNoMoreNotice() {
+      const el = document.getElementById('noMoreDataNotice');
+      if (el) el.classList.remove('hidden');
+    }
+
+    function hideInfiniteNotices() {
+      hideInfiniteLoading();
+      const el = document.getElementById('noMoreDataNotice');
+      if (el) el.classList.add('hidden');
+    }
+
+    // Global scroll listener for infinite loading
+    window.addEventListener('scroll', () => {
+      if (!currentTid || currentTid === '' || !hasMorePages || isLoadingMore) return;
+      if (!playerModal.classList.contains('hidden')) return;
+
+      const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const clientHeight = window.innerHeight || document.documentElement.clientHeight;
+
+      if (scrollTop + clientHeight >= scrollHeight - 450) {
+        loadNextCategoryPage();
+      }
+    }, { passive: true });
 
     // Helper: Create a single Video Card element (支持单击打开，长按直接全网聚合搜索同名资源)
     function createVideoCardElement(item, site = null) {
@@ -1881,6 +2080,8 @@
 
       addSearchHistory(wd);
       searchHistoryPopover.classList.add('hidden');
+      hideFilterPanel();
+      hideInfiniteNotices();
       setViewTitle(`搜索: ${wd}`);
       setLoading(true);
       siteErrorCard.classList.add('hidden');
@@ -2538,6 +2739,12 @@
     siteSelect.onchange = () => {
       const sites = currentConfig?.video?.sites || currentConfig?.sites || [];
       currentSite = sites[siteSelect.value];
+      currentFilters = {};
+      currentExtend = {};
+      currentPage = 1;
+      hasMorePages = false;
+      hideFilterPanel();
+      hideInfiniteNotices();
       setViewTitle(currentSite ? `${currentSite.name}` : '');
       loadSiteHome();
     };

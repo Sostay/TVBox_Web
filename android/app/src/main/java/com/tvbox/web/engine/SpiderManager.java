@@ -415,11 +415,15 @@ public class SpiderManager {
     }
 
     public String callCategory(String apiClass, String ext, String tid, String pg) {
+        return callCategory(apiClass, ext, tid, pg, null);
+    }
+
+    public String callCategory(String apiClass, String ext, String tid, String pg, HashMap<String, String> extend) {
         Object spider = getSpider(apiClass, ext);
         if (spider == null) return "{\"page\":1,\"pagecount\":1,\"limit\":20,\"total\":0,\"list\":[]}";
         try {
             Method m = spider.getClass().getMethod("categoryContent", String.class, String.class, boolean.class, HashMap.class);
-            Object res = m.invoke(spider, tid, pg, true, new HashMap<>());
+            Object res = m.invoke(spider, tid, pg, true, extend != null ? extend : new HashMap<>());
             String catStr = (res != null) ? res.toString().trim() : "";
             if (catStr.isEmpty() || !catStr.startsWith("{")) {
                 catStr = "{\"page\":1,\"pagecount\":1,\"limit\":20,\"total\":0,\"list\":[]}";
