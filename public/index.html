@@ -90,7 +90,7 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    /* Web Fullscreen Mode */
+    /* Web Fullscreen Mode (100% Window Size, Zero Scroll) */
     body.is-web-fullscreen {
       overflow: hidden !important;
     }
@@ -103,6 +103,15 @@
       height: 100vh !important;
       border-radius: 0 !important;
       border: 0 !important;
+      overflow: hidden !important;
+    }
+    .modal-web-fullscreen #playerViewport {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      aspect-ratio: auto !important;
+      flex: 1 1 100% !important;
     }
   </style>
 </head>
@@ -2301,16 +2310,24 @@
       const btn = document.getElementById('webFullscreenBtn');
       const icon = document.getElementById('webFullscreenIcon');
       const viewport = document.getElementById('playerViewport');
+      const detailPanel = document.getElementById('detailScrollPanel');
 
       if (isWebFullscreen) {
         document.body.classList.add('is-web-fullscreen');
-        playerModal.classList.add('p-0');
+        playerModal.classList.remove('p-2', 'sm:p-4', 'lg:p-6', 'overflow-y-auto');
+        playerModal.classList.add('p-0', 'overflow-hidden');
+
+        card.classList.remove('max-w-5xl', 'max-h-[92vh]', 'rounded-2xl', 'border');
         card.classList.add('modal-web-fullscreen');
+
         viewport.classList.remove('aspect-video');
-        viewport.classList.add('h-[65vh]', 'lg:h-[72vh]');
-        if (btn) btn.title = '退出网页全屏 (按 W 或 Esc)';
+        viewport.style.aspectRatio = 'auto';
+
+        if (detailPanel) detailPanel.classList.add('hidden');
+
+        if (btn) btn.title = '退出网页全屏 (按 W)';
         if (icon) {
-          // Standard inward arrows minimize icon (distinguished from close button)
+          // Standard inward arrows minimize icon
           icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v5m0 0H4m5 0L3 3m11 5h5m-5 0V4m0 5l6-6M9 20v-5m0 0H4m5 0l-6 6m11-5h5m-5 0v5m0-5l6 6"/>';
         }
         showToast('已进入网页全屏 (按 W 退出)');
@@ -2322,20 +2339,27 @@
     function exitWebFullscreen() {
       isWebFullscreen = false;
       document.body.classList.remove('is-web-fullscreen');
-      playerModal.classList.remove('p-0');
       const card = document.getElementById('playerCard');
       const btn = document.getElementById('webFullscreenBtn');
       const icon = document.getElementById('webFullscreenIcon');
       const viewport = document.getElementById('playerViewport');
+      const detailPanel = document.getElementById('detailScrollPanel');
+
+      playerModal.classList.remove('p-0', 'overflow-hidden');
+      playerModal.classList.add('p-2', 'sm:p-4', 'lg:p-6', 'overflow-y-auto');
 
       card.classList.remove('modal-web-fullscreen');
+      card.classList.add('max-w-5xl', 'max-h-[92vh]', 'rounded-2xl', 'border');
+
       viewport.classList.add('aspect-video');
-      viewport.classList.remove('h-[65vh]', 'lg:h-[72vh]');
       if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
         viewport.style.aspectRatio = `${videoElement.videoWidth} / ${videoElement.videoHeight}`;
       } else {
         viewport.style.aspectRatio = "16/9";
       }
+
+      if (detailPanel) detailPanel.classList.remove('hidden');
+
       if (btn) btn.title = '网页全屏切换 (按 W 或点击)';
       if (icon) {
         // Standard outward arrows maximize icon
