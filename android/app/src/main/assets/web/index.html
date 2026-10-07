@@ -335,14 +335,12 @@
           <span class="text-xs text-gray-300 tracking-wide">正在解析播放直链并拉取视频流...</span>
         </div>
 
-        <!-- Seek HUD Indicator Overlay -->
-        <div id="seekHud" class="absolute inset-0 flex items-center justify-center pointer-events-none z-20 opacity-0 transition-opacity duration-200">
-          <div class="px-4 py-2.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center gap-3 shadow-2xl">
-            <span id="seekHudIcon" class="text-xl">⏩</span>
-            <div class="flex flex-col min-w-[90px]">
-              <span id="seekHudDelta" class="text-sm font-bold tracking-wide font-mono text-indigo-300">+5s</span>
-              <span id="seekHudTime" class="text-[10px] text-gray-300 font-mono">00:00 / 00:00</span>
-            </div>
+                <!-- Top-Left Player OSD (No container box, crisp drop-shadow text) -->
+        <div id="playerOsd" class="absolute top-3 left-3 sm:top-4 sm:left-4 z-30 pointer-events-none opacity-0 transition-opacity duration-200 select-none">
+          <div class="flex items-center gap-2 text-white font-mono drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]">
+            <span id="osdIcon" class="text-base sm:text-lg">⏩</span>
+            <span id="osdMain" class="text-xs sm:text-sm font-bold tracking-wide text-indigo-300">+5s</span>
+            <span id="osdSub" class="text-[11px] sm:text-xs text-gray-200">00:00 / 00:00</span>
           </div>
         </div>
 
@@ -350,10 +348,8 @@
         <!-- Top Right Floating Action Controls (Hidden by default, shown on hover/touch) -->
         <div id="playerFloatingControls" class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
           <!-- Quick Episode Switcher ("选集") Button at the far left of top-right row -->
-          <button id="ctrlEpBtn" onclick="toggleQuickEpPopover(event)" class="px-2.5 py-1.5 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white text-xs font-medium transition flex items-center gap-1.5 shadow pointer-events-auto cursor-pointer" title="快速选集 (全屏免退出切换)">
-            <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-            <span>选集</span>
-            <span id="ctrlEpBadge" class="text-[10px] bg-indigo-600/80 px-1.5 py-0.2 rounded-full font-mono">1</span>
+          <button id="ctrlEpBtn" onclick="toggleQuickEpPopover(event)" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow pointer-events-auto cursor-pointer" title="选集列表">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
           <!-- Web Fullscreen Toggle Button (Pure Icon) -->
           <button id="webFullscreenBtn" onclick="toggleWebFullscreen()" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow" title="网页全屏切换 (按 W 或点击)">
@@ -414,23 +410,22 @@
           </button>
         </div>
         <!-- Quick Episode Popover Overlay inside playerViewport (Top-Right, High Legibility) -->
-        <div id="quickEpPopover" class="hidden absolute top-12 sm:top-14 right-2.5 sm:right-3 z-40 w-80 sm:w-[440px] max-w-[92vw] max-h-[72vh] rounded-2xl bg-dark-900/95 backdrop-blur-xl border border-white/20 shadow-2xl p-3 sm:p-4 flex flex-col transition-all duration-200">
-          <div class="flex items-center justify-between pb-2.5 border-b border-gray-700/80 mb-2.5 flex-shrink-0">
+        <div id="quickEpPopover" class="hidden absolute top-12 sm:top-14 right-2.5 sm:right-3 z-40 w-84 sm:w-[460px] max-w-[92vw] max-h-[72vh] rounded-2xl bg-dark-900/95 backdrop-blur-xl border border-white/20 shadow-2xl p-4 sm:p-5 flex flex-col transition-all duration-200">
+          <div class="flex items-center justify-between pb-3 border-b border-gray-700/80 mb-3 flex-shrink-0">
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-              <span class="text-xs sm:text-sm font-bold text-white">快速选集</span>
-              <span id="quickEpLineName" class="text-[10px] text-indigo-300 font-mono truncate max-w-[140px]">默认线路</span>
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
+              <span class="text-sm font-bold text-white">快速选集</span>
+              <span id="quickEpLineName" class="text-xs text-indigo-300 font-mono truncate max-w-[150px]">默认线路</span>
             </div>
             <button onclick="closeQuickEpPopover()" class="p-1 text-gray-400 hover:text-white rounded-lg transition cursor-pointer" title="关闭选集">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
           <!-- Quick Line Tabs (if multiple lines exist) -->
-          <div id="quickLineTabs" class="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none flex-shrink-0"></div>
+          <div id="quickLineTabs" class="flex items-center gap-2 overflow-x-auto pb-2.5 mb-2 scrollbar-none flex-shrink-0"></div>
           <!-- Quick Episodes Grid (Adaptive columns & legible text) -->
-          <div id="quickEpGrid" class="flex-1 overflow-y-auto pr-1 max-h-[55vh]"></div>
+          <div id="quickEpGrid" class="flex-1 overflow-y-auto pr-1 max-h-[54vh]"></div>
         </div>
-</div>
 
       <!-- Detail & Episodes Scrollable Panel -->
       <div id="detailScrollPanel" class="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto space-y-4">
@@ -623,6 +618,7 @@
     function toggleMute() {
       videoElement.muted = !videoElement.muted;
       updateVolumeUI();
+      showVolumeOsd();
     }
 
     function updateVolumeUI() {
@@ -657,7 +653,7 @@
         videoElement.volume = newVol;
         if (newVol > 0) videoElement.muted = false;
         updateVolumeUI();
-        showSeekHud(delta < 0 ? 5 : -5, videoElement.currentTime);
+        showVolumeOsd();
       }, { passive: false });
     }
 
@@ -667,6 +663,7 @@
         videoElement.volume = val;
         videoElement.muted = (val === 0);
         updateVolumeUI();
+        showVolumeOsd();
       });
     }
 
@@ -2164,28 +2161,45 @@
       videoElement.src = '';
     }
 
-    // Seek HUD & Keyboard Shortcuts (➡ 5s, ⬅ -5s, Ctrl+➡ 30s, Ctrl+⬅ -30s)
-    let seekHudTimer = null;
-    function showSeekHud(delta, targetTime) {
-      const hud = document.getElementById('seekHud');
-      const icon = document.getElementById('seekHudIcon');
-      const deltaEl = document.getElementById('seekHudDelta');
-      const timeEl = document.getElementById('seekHudTime');
-      if (!hud) return;
+    // Top-Left Player OSD & Unified Feedback (No background box)
+    let osdTimer = null;
+    function showOsd(icon, mainText, subText = '', isAmber = false) {
+      const osd = document.getElementById('playerOsd');
+      const iconEl = document.getElementById('osdIcon');
+      const mainEl = document.getElementById('osdMain');
+      const subEl = document.getElementById('osdSub');
+      if (!osd) return;
 
-      icon.textContent = delta > 0 ? '⏩' : '⏪';
-      deltaEl.textContent = `${delta > 0 ? '+' : ''}${delta}s${Math.abs(delta) >= 30 ? ' (快速)' : ''}`;
-      deltaEl.className = `text-sm font-bold tracking-wide font-mono ${Math.abs(delta) >= 30 ? 'text-amber-300' : 'text-indigo-300'}`;
-      timeEl.textContent = `${formatTimeStr(targetTime)} / ${formatTimeStr(videoElement.duration)}`;
+      if (iconEl) iconEl.textContent = icon;
+      if (mainEl) {
+        mainEl.textContent = mainText;
+        mainEl.className = `text-xs sm:text-sm font-bold tracking-wide ${isAmber ? 'text-amber-300' : 'text-indigo-300'}`;
+      }
+      if (subEl) subEl.textContent = subText;
 
-      hud.classList.remove('opacity-0');
-      hud.classList.add('opacity-100');
+      osd.classList.remove('opacity-0');
+      osd.classList.add('opacity-100');
 
-      if (seekHudTimer) clearTimeout(seekHudTimer);
-      seekHudTimer = setTimeout(() => {
-        hud.classList.remove('opacity-100');
-        hud.classList.add('opacity-0');
-      }, 750);
+      if (osdTimer) clearTimeout(osdTimer);
+      osdTimer = setTimeout(() => {
+        osd.classList.remove('opacity-100');
+        osd.classList.add('opacity-0');
+      }, 850);
+    }
+
+    function showSeekOsd(delta, targetTime) {
+      const icon = delta > 0 ? '⏩' : '⏪';
+      const mainText = `${delta > 0 ? '+' : ''}${delta}s${Math.abs(delta) >= 30 ? ' (快速)' : ''}`;
+      const subText = `${formatTimeStr(targetTime)} / ${formatTimeStr(videoElement.duration)}`;
+      showOsd(icon, mainText, subText, Math.abs(delta) >= 30);
+    }
+
+    function showVolumeOsd() {
+      const volPct = Math.round(videoElement.volume * 100);
+      const isMuted = videoElement.muted || volPct === 0;
+      const icon = isMuted ? '🔇' : (volPct < 50 ? '🔉' : '🔊');
+      const mainText = isMuted ? '已静音' : `音量 ${volPct}%`;
+      showOsd(icon, mainText, '', false);
     }
 
     function handleSeek(direction, isCtrl) {
@@ -2194,7 +2208,7 @@
       const delta = direction * step;
       const targetTime = Math.max(0, Math.min(videoElement.duration, videoElement.currentTime + delta));
       videoElement.currentTime = targetTime;
-      showSeekHud(delta, targetTime);
+      showSeekOsd(delta, targetTime);
     }
 
     document.addEventListener('keydown', (e) => {
@@ -2229,10 +2243,12 @@
         videoElement.volume = Math.min(1, videoElement.volume + 0.05);
         videoElement.muted = false;
         updateVolumeUI();
+        showVolumeOsd();
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         videoElement.volume = Math.max(0, videoElement.volume - 0.05);
         updateVolumeUI();
+        showVolumeOsd();
       }
     });
 
