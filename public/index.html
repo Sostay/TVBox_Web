@@ -68,7 +68,7 @@
 <body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col font-sans select-none antialiased">
 
   <!-- Header Navbar -->
-  <header class="sticky top-0 z-0 bg-dark-800/95 backdrop-blur border-b border-gray-800 px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md">
+  <header class="sticky top-0 z-40 bg-dark-800/95 backdrop-blur border-b border-gray-800 px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md">
     <!-- Brand Logo -->
     <div class="flex items-center gap-2.5 cursor-pointer" onclick="goHome()">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
@@ -164,10 +164,10 @@
       </div>
 
       <!-- Cloud Drive Settings -->
-      <a href="/website" target="_blank" class="flex items-center gap-1 px-2.5 py-1.5 bg-dark-750 hover:bg-dark-700 border border-gray-700 rounded-lg text-xs font-medium text-amber-300 hover:text-amber-200 transition shadow-sm" title="打开网盘扫码配置中心">
+      <button onclick="openWebsiteModal()" class="flex items-center gap-1 px-2.5 py-1.5 bg-dark-750 hover:bg-dark-700 border border-gray-700 rounded-lg text-xs font-medium text-amber-300 hover:text-amber-200 transition shadow-sm" title="打开网盘扫码配置中心">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
         <span class="hidden sm:inline">网盘配置</span>
-      </a>
+      </button>
 
       <!-- Refresh Page Button -->
       <button id="refreshBtn" title="刷新页面" class="p-2 bg-dark-750 hover:bg-dark-700 border border-gray-700 rounded-lg text-gray-300 transition">
@@ -197,9 +197,9 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           手动输入新源
         </button>
-        <a href="/website" target="_blank" class="px-5 py-2.5 bg-dark-800 hover:bg-dark-750 border border-gray-700 text-xs font-medium text-gray-200 rounded-xl transition flex items-center justify-center gap-1.5">
+        <button onclick="openWebsiteModal()" class="px-5 py-2.5 bg-dark-800 hover:bg-dark-750 border border-gray-700 text-xs font-medium text-gray-200 rounded-xl transition flex items-center justify-center gap-1.5">
           ⚙️ 前往网盘配置中心
-        </a>
+        </button>
       </div>
     </div>
 
@@ -227,9 +227,9 @@
             <button onclick="switchQuickWorkingSite('douban')" class="px-3.5 py-1.5 bg-dark-700 hover:bg-dark-600 border border-gray-600 text-gray-200 rounded-lg text-xs font-medium transition">
               切换到「豆瓣首页」
             </button>
-            <a href="/website" target="_blank" class="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-medium transition flex items-center gap-1">
+            <button onclick="openWebsiteModal()" class="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-medium transition flex items-center gap-1">
               ⚙️ 网盘配置中心
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -1341,6 +1341,7 @@
       }
       if (!currentSite) return;
       playerModal.classList.remove('hidden');
+      document.querySelector('header').style.zIndex = '0';
       document.getElementById('modalVodName').textContent = '加载详情中...';
       document.getElementById('modalVodContent').textContent = '';
       document.getElementById('modalVodRemarks').textContent = '';
@@ -1701,6 +1702,7 @@
     function closePlayerModal() {
       if (isWebFullscreen) exitWebFullscreen();
       playerModal.classList.add('hidden');
+      document.querySelector('header').style.zIndex = '';
       playerViewport.style.aspectRatio = "16/9";
       if (hlsInstance) {
         hlsInstance.destroy();
@@ -1710,13 +1712,12 @@
       videoElement.src = '';
     }
 
-    // Keyboard Shortcuts (W only; ESC no longer closes the player)
+    // Keyboard Shortcuts (W only; ESC reserved for browser native fullscreen exit)
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeSourceDropdown();
         closeHistoryDrawer();
       } else if ((e.key === 'w' || e.key === 'W') && !playerModal.classList.contains('hidden')) {
-        // Toggle web fullscreen with 'W' key
         if (document.activeElement.tagName !== 'INPUT') {
           toggleWebFullscreen();
         }
@@ -1786,6 +1787,20 @@
     playerViewport.addEventListener('mouseleave', hidePlayerFloatingControls);
     playerViewport.addEventListener('touchstart', showPlayerFloatingControls, { passive: true });
 
+
+    // Website Config Floating Modal
+    function openWebsiteModal() {
+      const modal = document.getElementById('websiteModal');
+      const iframe = document.getElementById('websiteIframe');
+      if (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href) {
+        iframe.src = '/website';
+      }
+      modal.classList.remove('hidden');
+    }
+    function closeWebsiteModal() {
+      document.getElementById('websiteModal').classList.add('hidden');
+    }
+
     // Bootstrap
     loadSavedSources();
     updateHistoryBadge();
@@ -1798,5 +1813,26 @@
 
   
 
+
+  <!-- Website Config Floating Modal (iframe overlay) -->
+  <div id="websiteModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-dark-800 border border-gray-700 rounded-2xl w-full max-w-4xl flex flex-col overflow-hidden shadow-2xl" style="height:88vh;">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-700 bg-dark-900/60 flex-shrink-0">
+        <div class="flex items-center gap-2 text-sm font-bold text-white">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+          网盘扫码配置中心
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="window.open('/website','_blank')" class="p-1.5 text-gray-400 hover:text-white hover:bg-dark-700 rounded-lg transition" title="在新标签页中打开">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          </button>
+          <button onclick="closeWebsiteModal()" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <iframe id="websiteIframe" src="" class="flex-1 w-full border-0" style="background:#0b0f19;"></iframe>
+    </div>
+  </div>
 </body>
 </html>
