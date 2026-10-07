@@ -1520,6 +1520,7 @@
     function selectSource(idx) {
       if (idx === activeSourceIndex) return;
       activeSourceIndex = idx;
+      localStorage.removeItem('tvbox_active_site_key');
       saveSources();
       renderSourcesList();
       closeSourceModal();
@@ -1615,11 +1616,15 @@
         siteSelect.appendChild(opt);
       });
 
-      // Default to 瓜子秒播 or 独播秒播 if available
-      let preferredIdx = sites.findIndex(s => s.name.includes('瓜子') || s.name.includes('独播'));
-      if (preferredIdx === -1) preferredIdx = 0;
-      siteSelect.value = preferredIdx;
-      currentSite = sites[preferredIdx];
+      // Default to first site (index 0, e.g. 豆瓣|首页) or restore user's saved selection
+      const savedSiteKey = localStorage.getItem('tvbox_active_site_key');
+      let targetIdx = 0;
+      if (savedSiteKey) {
+        const foundIdx = sites.findIndex(s => (s.key && s.key === savedSiteKey) || (s.name && s.name === savedSiteKey));
+        if (foundIdx !== -1) targetIdx = foundIdx;
+      }
+      siteSelect.value = targetIdx;
+      currentSite = sites[targetIdx];
 
       loadSiteHome();
     }
@@ -2739,6 +2744,9 @@
     siteSelect.onchange = () => {
       const sites = currentConfig?.video?.sites || currentConfig?.sites || [];
       currentSite = sites[siteSelect.value];
+      if (currentSite) {
+        localStorage.setItem('tvbox_active_site_key', currentSite.key || currentSite.name);
+      }
       currentFilters = {};
       currentExtend = {};
       currentPage = 1;
