@@ -424,7 +424,7 @@
           <!-- Quick Line Tabs (if multiple lines exist) -->
           <div id="quickLineTabs" class="flex items-center gap-2 overflow-x-auto pb-2.5 mb-2 scrollbar-none flex-shrink-0"></div>
           <!-- Quick Episodes Grid (Adaptive columns & legible text) -->
-          <div id="quickEpGrid" class="flex-1 overflow-y-auto pr-1 max-h-[54vh]"></div>
+          <div id="quickEpGrid" class="flex-1 overflow-y-auto grid grid-cols-4 sm:grid-cols-6 gap-3 p-1 max-h-[54vh]"></div>
         </div>
       </div>
 
@@ -781,8 +781,8 @@
         if (parsedLines.length > 1) {
           parsedLines.forEach((line, lIdx) => {
             const btn = document.createElement('button');
-            btn.className = `px-2 py-0.5 rounded-md text-[10px] font-medium transition flex-shrink-0 ${
-              lIdx === currentLineIndex ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'
+            btn.className = `px-3 py-1.5 rounded-lg text-xs font-medium transition flex-shrink-0 cursor-pointer ${
+              lIdx === currentLineIndex ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white/10 text-gray-300 hover:bg-white/20'
             }`;
             btn.textContent = line.name;
             btn.onclick = (e) => {
@@ -800,19 +800,45 @@
         }
       }
 
-      // Render episodes grid
+      // Smart check if episode titles are long (such as cloud drive filename "[251.9MB]2026.08.13...")
+      const maxLen = eps.reduce((m, e) => Math.max(m, (e.name || '').length), 0);
+      const isLongTitle = maxLen > 7;
+
       if (quickEpGrid) {
         quickEpGrid.innerHTML = '';
+        // Explicit grid classes and spacing (gap-3) to prevent buttons from sticking together
+        if (isLongTitle) {
+          // Long titles: 1 column on mobile, 2 columns on tablet/desktop with comfortable gap-3
+          quickEpGrid.className = 'flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-3 p-1 max-h-[54vh]';
+        } else {
+          // Short numbers (01, 02...): 4 to 6 columns with explicit gap-3 (12px spacing)
+          quickEpGrid.className = 'flex-1 overflow-y-auto grid grid-cols-4 sm:grid-cols-6 gap-3 p-1 max-h-[54vh]';
+        }
+
         eps.forEach((ep, idx) => {
           const isActive = (idx === currentEpIndex) || (ep.id === currentEpId);
           const btn = document.createElement('button');
-          btn.className = `px-2.5 py-1.5 rounded-xl text-xs font-mono transition text-center truncate border ${
-            isActive
-              ? 'bg-indigo-600 text-white font-bold border-indigo-400/80 ring-2 ring-indigo-400/40 shadow'
-              : 'bg-white/5 hover:bg-white/15 text-gray-200 border-white/10 hover:border-white/25'
-          }`;
-          btn.title = ep.name;
-          btn.textContent = ep.name;
+          if (isLongTitle) {
+            btn.className = `p-3 rounded-xl text-xs sm:text-[13px] leading-relaxed transition border flex items-center justify-between gap-3 cursor-pointer text-left shadow-sm ${
+              isActive
+                ? 'bg-indigo-600 text-white font-bold border-indigo-400 ring-2 ring-indigo-400/40 shadow-md'
+                : 'bg-white/10 hover:bg-white/20 text-gray-100 border-white/10 hover:border-white/25'
+            }`;
+            btn.title = ep.name;
+            btn.innerHTML = `
+              <span class="truncate line-clamp-2">${ep.name}</span>
+              ${isActive ? '<span class="text-[9px] bg-white/25 px-1.5 py-0.5 rounded font-mono flex-shrink-0">播放中</span>' : ''}
+            `;
+          } else {
+            btn.className = `py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition text-center border cursor-pointer shadow-sm ${
+              isActive
+                ? 'bg-indigo-600 text-white font-bold border-indigo-400 ring-2 ring-indigo-400/40 shadow-md'
+                : 'bg-white/10 hover:bg-white/20 text-gray-100 border-white/10 hover:border-white/25'
+            }`;
+            btn.title = ep.name;
+            btn.textContent = ep.name;
+          }
+
           btn.onclick = (e) => {
             e.stopPropagation();
             selectEpisode(idx);
