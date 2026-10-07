@@ -335,6 +335,18 @@
           <span class="text-xs text-gray-300 tracking-wide">正在解析播放直链并拉取视频流...</span>
         </div>
 
+        <!-- Seek HUD Indicator Overlay -->
+        <div id="seekHud" class="absolute inset-0 flex items-center justify-center pointer-events-none z-20 opacity-0 transition-opacity duration-200">
+          <div class="px-4 py-2.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center gap-3 shadow-2xl">
+            <span id="seekHudIcon" class="text-xl">⏩</span>
+            <div class="flex flex-col min-w-[90px]">
+              <span id="seekHudDelta" class="text-sm font-bold tracking-wide font-mono text-indigo-300">+5s</span>
+              <span id="seekHudTime" class="text-[10px] text-gray-300 font-mono">00:00 / 00:00</span>
+            </div>
+          </div>
+        </div>
+
+
         <!-- Top Right Floating Action Controls (Hidden by default, shown on hover/touch) -->
         <div id="playerFloatingControls" class="absolute top-3 right-3 flex items-center gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
           <!-- Web Fullscreen Toggle Button (Pure Icon) -->
@@ -1712,15 +1724,60 @@
       videoElement.src = '';
     }
 
-    // Keyboard Shortcuts (W only; ESC reserved for browser native fullscreen exit)
+    // Seek HUD & Keyboard Shortcuts (➡ 5s, ⬅ -5s, Ctrl+➡ 30s, Ctrl+⬅ -30s)
+    let seekHudTimer = null;
+    function showSeekHud(delta, targetTime) {
+      const hud = document.getElementById('seekHud');
+      const icon = document.getElementById('seekHudIcon');
+      const deltaEl = document.getElementById('seekHudDelta');
+      const timeEl = document.getElementById('seekHudTime');
+      if (!hud) return;
+
+      icon.textContent = delta > 0 ? '⏩' : '⏪';
+      deltaEl.textContent = `${delta > 0 ? '+' : ''}${delta}s${Math.abs(delta) >= 30 ? ' (快速)' : ''}`;
+      deltaEl.className = `text-sm font-bold tracking-wide font-mono ${Math.abs(delta) >= 30 ? 'text-amber-300' : 'text-indigo-300'}`;
+      timeEl.textContent = `${formatTimeStr(targetTime)} / ${formatTimeStr(videoElement.duration)}`;
+
+      hud.classList.remove('opacity-0');
+      hud.classList.add('opacity-100');
+
+      if (seekHudTimer) clearTimeout(seekHudTimer);
+      seekHudTimer = setTimeout(() => {
+        hud.classList.remove('opacity-100');
+        hud.classList.add('opacity-0');
+      }, 750);
+    }
+
+    function handleSeek(direction, isCtrl) {
+      if (!videoElement || isNaN(videoElement.duration) || videoElement.duration <= 0) return;
+      const step = isCtrl ? 30 : 5;
+      const delta = direction * step;
+      const targetTime = Math.max(0, Math.min(videoElement.duration, videoElement.currentTime + delta));
+      videoElement.currentTime = targetTime;
+      showSeekHud(delta, targetTime);
+    }
+
     document.addEventListener('keydown', (e) => {
+      // Ignore if typing in input/textarea
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+
       if (e.key === 'Escape') {
         closeSourceDropdown();
         closeHistoryDrawer();
-      } else if ((e.key === 'w' || e.key === 'W') && !playerModal.classList.contains('hidden')) {
-        if (document.activeElement.tagName !== 'INPUT') {
-          toggleWebFullscreen();
-        }
+        return;
+      }
+
+      if (playerModal.classList.contains('hidden')) return;
+
+      if (e.key === 'w' || e.key === 'W') {
+        e.preventDefault();
+        toggleWebFullscreen();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleSeek(1, e.ctrlKey);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handleSeek(-1, e.ctrlKey);
       }
     });
 
