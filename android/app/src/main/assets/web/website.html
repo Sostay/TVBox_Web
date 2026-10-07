@@ -8,32 +8,49 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <style>
-    /* Global Auto-hiding Scrollbar (Mac/iOS style) */
+    /* Zero-Gutter Overlay Scrollbar (零占宽悬浮透明) */
+    html, body, div, .wrap, .cards, textarea {
+      overflow-y: overlay;
+    }
     * {
       scrollbar-width: thin;
       scrollbar-color: transparent transparent;
-      transition: scrollbar-color 0.3s ease;
+      transition: scrollbar-color 0.25s ease;
     }
     *:hover {
-      scrollbar-color: rgba(145, 166, 189, 0.4) transparent;
+      scrollbar-color: rgba(145, 166, 189, 0.45) transparent;
     }
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
+      background-color: transparent !important;
     }
     ::-webkit-scrollbar-track {
+      background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+    }
+    ::-webkit-scrollbar-track-piece {
+      background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+    }
+    ::-webkit-scrollbar-corner {
       background: transparent !important;
     }
     ::-webkit-scrollbar-thumb {
       background: transparent;
+      background-color: transparent;
       border-radius: 9999px;
-      transition: background 0.3s ease;
+      border: 1px solid transparent;
+      background-clip: padding-box;
+      transition: background-color 0.25s ease;
     }
     *:hover::-webkit-scrollbar-thumb {
-      background: rgba(145, 166, 189, 0.35);
+      background-color: rgba(145, 166, 189, 0.45);
     }
     *:hover::-webkit-scrollbar-thumb:hover {
-      background: rgba(56, 199, 255, 0.75);
+      background-color: rgba(56, 199, 255, 0.85);
     }
 
     :root{

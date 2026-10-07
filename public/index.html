@@ -33,11 +33,14 @@
     }
   </script>
   <style>
-    /* Global Auto-hiding Scrollbar (Mac/iOS style) */
+    /* Zero-Gutter Overlay Scrollbar (Mac/iOS Overlay Style: 零占宽悬浮透明) */
+    html, body, div, main, aside, section, article, nav {
+      overflow-y: overlay;
+    }
     * {
       scrollbar-width: thin;
       scrollbar-color: transparent transparent;
-      transition: scrollbar-color 0.3s ease;
+      transition: scrollbar-color 0.25s ease;
     }
     *:hover {
       scrollbar-color: rgba(156, 163, 175, 0.45) transparent;
@@ -45,33 +48,34 @@
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
+      background-color: transparent !important;
     }
     ::-webkit-scrollbar-track {
+      background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+    }
+    ::-webkit-scrollbar-track-piece {
+      background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+    }
+    ::-webkit-scrollbar-corner {
       background: transparent !important;
     }
     ::-webkit-scrollbar-thumb {
       background: transparent;
+      background-color: transparent;
       border-radius: 9999px;
-      transition: background 0.3s ease;
+      border: 1px solid transparent;
+      background-clip: padding-box;
+      transition: background-color 0.25s ease;
     }
     *:hover::-webkit-scrollbar-thumb {
-      background: rgba(156, 163, 175, 0.35);
+      background-color: rgba(156, 163, 175, 0.45);
     }
     *:hover::-webkit-scrollbar-thumb:hover {
-      background: rgba(99, 102, 241, 0.85);
-    }
-    /* Hide scrollbars completely on smooth-scrolling panels until hovered */
-    .scrollbar-hover-show {
-      scrollbar-width: none;
-    }
-    .scrollbar-hover-show::-webkit-scrollbar-thumb {
-      background: transparent;
-    }
-    .scrollbar-hover-show:hover {
-      scrollbar-width: thin;
-    }
-    .scrollbar-hover-show:hover::-webkit-scrollbar-thumb {
-      background: rgba(156, 163, 175, 0.4);
+      background-color: rgba(99, 102, 241, 0.9);
     }
     .line-clamp-2 {
       display: -webkit-box;
@@ -382,7 +386,7 @@
 
 
         <!-- Top Right Floating Action Controls (Hidden by default, shown on hover/touch) -->
-        <div id="playerFloatingControls" class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+        <div id="playerFloatingControls" class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center gap-2 z-30 opacity-0 transition-opacity duration-300 pointer-events-none">
           <!-- Quick Episode Switcher ("选集") Button at the far left of top-right row -->
           <button id="ctrlEpBtn" onclick="toggleQuickEpPopover(event)" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow pointer-events-auto cursor-pointer" title="选集列表">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
