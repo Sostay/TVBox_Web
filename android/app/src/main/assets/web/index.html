@@ -337,14 +337,13 @@
 
         <!-- Top Right Floating Action Controls -->
         <div class="absolute top-3 right-3 flex items-center gap-2 z-20 opacity-90 group-hover:opacity-100 transition">
-          <!-- Web Fullscreen Toggle Button -->
-          <button id="webFullscreenBtn" onclick="toggleWebFullscreen()" class="px-2.5 py-1.5 bg-black/65 hover:bg-black/85 border border-white/20 rounded-lg text-xs font-medium text-white transition flex items-center gap-1.5 shadow" title="网页全屏切换 (按 W 或点击)">
-            <svg id="webFullscreenIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-            <span id="webFullscreenText" class="text-[11px]">网页全屏</span>
+          <!-- Web Fullscreen Toggle Button (Pure Icon) -->
+          <button id="webFullscreenBtn" onclick="toggleWebFullscreen()" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow" title="网页全屏切换 (按 W 或点击)">
+            <svg id="webFullscreenIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
           </button>
           <!-- Close Modal Button -->
-          <button id="closeModalBtn" onclick="closePlayerModal()" class="p-1.5 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition shadow" title="关闭播放页 (按 Esc)">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <button id="closeModalBtn" onclick="closePlayerModal()" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow" title="关闭播放页 (按 Esc)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
       </div>
@@ -1506,7 +1505,7 @@
     function toggleWebFullscreen() {
       isWebFullscreen = !isWebFullscreen;
       const card = document.getElementById('playerCard');
-      const text = document.getElementById('webFullscreenText');
+      const btn = document.getElementById('webFullscreenBtn');
       const icon = document.getElementById('webFullscreenIcon');
       const viewport = document.getElementById('playerViewport');
 
@@ -1516,8 +1515,11 @@
         card.classList.add('modal-web-fullscreen');
         viewport.classList.remove('aspect-video');
         viewport.classList.add('h-[65vh]', 'lg:h-[72vh]');
-        text.textContent = '退出全屏';
-        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>';
+        if (btn) btn.title = '退出网页全屏 (按 W 或 Esc)';
+        if (icon) {
+          // Standard inward arrows minimize icon (distinguished from close button)
+          icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v5m0 0H4m5 0L3 3m11 5h5m-5 0V4m0 5l6-6M9 20v-5m0 0H4m5 0l-6 6m11-5h5m-5 0v5m0-5l6 6"/>';
+        }
         showToast('已进入网页全屏 (按 Esc 或 W 退出)');
       } else {
         exitWebFullscreen();
@@ -1529,16 +1531,23 @@
       document.body.classList.remove('is-web-fullscreen');
       playerModal.classList.remove('p-0');
       const card = document.getElementById('playerCard');
-      const text = document.getElementById('webFullscreenText');
+      const btn = document.getElementById('webFullscreenBtn');
       const icon = document.getElementById('webFullscreenIcon');
       const viewport = document.getElementById('playerViewport');
 
       card.classList.remove('modal-web-fullscreen');
       viewport.classList.add('aspect-video');
       viewport.classList.remove('h-[65vh]', 'lg:h-[72vh]');
-      if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) { viewport.style.aspectRatio = `${videoElement.videoWidth} / ${videoElement.videoHeight}`; } else { viewport.style.aspectRatio = "16/9"; }
-      text.textContent = '网页全屏';
-      icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>';
+      if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+        viewport.style.aspectRatio = `${videoElement.videoWidth} / ${videoElement.videoHeight}`;
+      } else {
+        viewport.style.aspectRatio = "16/9";
+      }
+      if (btn) btn.title = '网页全屏切换 (按 W 或点击)';
+      if (icon) {
+        // Standard outward arrows maximize icon
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>';
+      }
     }
 
     function closePlayerModal() {
