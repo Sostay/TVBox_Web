@@ -71,7 +71,7 @@ TVBox_Web/start.bat
 
 ### 方式二：命令行启动
 ```bash
-cd D:\DS_Harness\TVBox_Web
+cd TVBox_Web
 node gateway.js
 ```
 
