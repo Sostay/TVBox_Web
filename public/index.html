@@ -348,7 +348,13 @@
 
 
         <!-- Top Right Floating Action Controls (Hidden by default, shown on hover/touch) -->
-        <div id="playerFloatingControls" class="absolute top-3 right-3 flex items-center gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+        <div id="playerFloatingControls" class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+          <!-- Quick Episode Switcher ("选集") Button at the far left of top-right row -->
+          <button id="ctrlEpBtn" onclick="toggleQuickEpPopover(event)" class="px-2.5 py-1.5 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white text-xs font-medium transition flex items-center gap-1.5 shadow pointer-events-auto cursor-pointer" title="快速选集 (全屏免退出切换)">
+            <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <span>选集</span>
+            <span id="ctrlEpBadge" class="text-[10px] bg-indigo-600/80 px-1.5 py-0.2 rounded-full font-mono">1</span>
+          </button>
           <!-- Web Fullscreen Toggle Button (Pure Icon) -->
           <button id="webFullscreenBtn" onclick="toggleWebFullscreen()" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow" title="网页全屏切换 (按 W 或点击)">
             <svg id="webFullscreenIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
@@ -358,8 +364,10 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
-              <!-- Custom Controls Bar (Frosted Glass Floating Pill) -->
-        <div id="customControls" class="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 z-30 flex items-center gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-dark-900/85 backdrop-blur-md border border-white/10 shadow-2xl transition-all duration-300 opacity-0 translate-y-2 pointer-events-none">
+              <!-- Soft bottom vignette for readable controls without container box -->
+        <div id="ctrlBottomVignette" class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none z-20 opacity-0 transition-opacity duration-300"></div>
+        <!-- Custom Controls Bar (Frosted Glass Floating Pill) -->
+        <div id="customControls" class="absolute bottom-1.5 left-2 right-2 sm:bottom-2 sm:left-3 sm:right-3 z-30 flex items-center gap-2 sm:gap-2.5 px-1 py-1 transition-all duration-300 opacity-0 translate-y-1 pointer-events-none">
           <!-- Play / Pause Button -->
           <button id="ctrlPlayBtn" onclick="togglePlayPause()" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="播放 / 暂停 (空格键)">
             <svg id="ctrlPlayIcon" class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5z"/></svg>
@@ -371,10 +379,10 @@
           </button>
 
           <!-- Time Display -->
-          <div id="ctrlTime" class="text-[11px] sm:text-xs font-mono text-gray-200 select-none flex-shrink-0 whitespace-nowrap">00:00 / 00:00</div>
+          <div id="ctrlTime" class="text-[11px] sm:text-xs font-mono text-gray-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] select-none flex-shrink-0 whitespace-nowrap">00:00 / 00:00</div>
 
           <!-- Progress Bar Container -->
-          <div id="ctrlProgressContainer" class="relative flex-1 h-6 flex items-center cursor-pointer group/prog select-none">
+          <div id="ctrlProgressContainer" class="relative flex-1 h-6 flex items-center cursor-pointer group/prog select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
             <!-- Background track -->
             <div class="relative w-full h-1 sm:h-1.5 group-hover/prog:h-2 sm:group-hover/prog:h-2.5 bg-white/20 rounded-full overflow-hidden transition-all duration-150">
               <!-- Buffered bar -->
@@ -400,37 +408,29 @@
             </div>
           </div>
 
-          <!-- Quick Episode Switcher ("选集") Button -->
-          <button id="ctrlEpBtn" onclick="toggleQuickEpPopover(event)" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 border border-indigo-400/30 text-white text-xs font-medium flex items-center gap-1.5 transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="全屏快速选集 (免退出全屏切换)">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-            <span>选集</span>
-            <span id="ctrlEpBadge" class="text-[10px] bg-black/30 px-1 rounded font-mono">1</span>
-          </button>
-
           <!-- Native Fullscreen Toggle Button -->
           <button id="ctrlNativeFsBtn" onclick="toggleNativeFullscreen()" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="全屏 / 退出全屏 (双击视频或按 F)">
             <svg id="ctrlNativeFsIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
           </button>
         </div>
-
-        <!-- Quick Episode Popover Overlay inside playerViewport (Works in Fullscreen!) -->
-        <div id="quickEpPopover" class="hidden absolute bottom-16 sm:bottom-20 right-3 sm:right-6 z-40 w-72 sm:w-84 max-w-[88vw] max-h-72 sm:max-h-84 rounded-2xl bg-dark-900/95 backdrop-blur-xl border border-white/20 shadow-2xl p-3 sm:p-4 flex flex-col transition-all duration-200">
+        <!-- Quick Episode Popover Overlay inside playerViewport (Top-Right, High Legibility) -->
+        <div id="quickEpPopover" class="hidden absolute top-12 sm:top-14 right-2.5 sm:right-3 z-40 w-80 sm:w-[440px] max-w-[92vw] max-h-[72vh] rounded-2xl bg-dark-900/95 backdrop-blur-xl border border-white/20 shadow-2xl p-3 sm:p-4 flex flex-col transition-all duration-200">
           <div class="flex items-center justify-between pb-2.5 border-b border-gray-700/80 mb-2.5 flex-shrink-0">
             <div class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-              <span class="text-xs font-bold text-white">快速选集</span>
-              <span id="quickEpLineName" class="text-[10px] text-indigo-300 font-mono truncate max-w-[120px]">默认线路</span>
+              <span class="text-xs sm:text-sm font-bold text-white">快速选集</span>
+              <span id="quickEpLineName" class="text-[10px] text-indigo-300 font-mono truncate max-w-[140px]">默认线路</span>
             </div>
-            <button onclick="closeQuickEpPopover()" class="p-1 text-gray-400 hover:text-white rounded-lg transition" title="关闭">
+            <button onclick="closeQuickEpPopover()" class="p-1 text-gray-400 hover:text-white rounded-lg transition cursor-pointer" title="关闭选集">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
           <!-- Quick Line Tabs (if multiple lines exist) -->
           <div id="quickLineTabs" class="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none flex-shrink-0"></div>
-          <!-- Quick Episodes Grid -->
-          <div id="quickEpGrid" class="flex-1 overflow-y-auto grid grid-cols-3 sm:grid-cols-4 gap-2 pr-1 max-h-52"></div>
+          <!-- Quick Episodes Grid (Adaptive columns & legible text) -->
+          <div id="quickEpGrid" class="flex-1 overflow-y-auto pr-1 max-h-[55vh]"></div>
         </div>
-      </div>
+</div>
 
       <!-- Detail & Episodes Scrollable Panel -->
       <div id="detailScrollPanel" class="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto space-y-4">
@@ -869,13 +869,18 @@
     let controlsHideTimer = null;
     function showControls() {
       if (customControls) {
-        customControls.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+        customControls.classList.remove('opacity-0', 'translate-y-1', 'pointer-events-none');
         customControls.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
       }
       const topControls = document.getElementById('playerFloatingControls');
       if (topControls) {
         topControls.classList.remove('opacity-0', 'pointer-events-none');
         topControls.classList.add('opacity-100', 'pointer-events-auto');
+      }
+      const vignette = document.getElementById('ctrlBottomVignette');
+      if (vignette) {
+        vignette.classList.remove('opacity-0');
+        vignette.classList.add('opacity-100');
       }
 
       if (controlsHideTimer) clearTimeout(controlsHideTimer);
@@ -887,13 +892,18 @@
     function hideControls() {
       if (videoElement.paused || isQuickEpOpen) return;
       if (customControls) {
-        customControls.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+        customControls.classList.add('opacity-0', 'translate-y-1', 'pointer-events-none');
         customControls.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
       }
       const topControls = document.getElementById('playerFloatingControls');
       if (topControls) {
         topControls.classList.add('opacity-0', 'pointer-events-none');
         topControls.classList.remove('opacity-100', 'pointer-events-auto');
+      }
+      const vignette = document.getElementById('ctrlBottomVignette');
+      if (vignette) {
+        vignette.classList.add('opacity-0');
+        vignette.classList.remove('opacity-100');
       }
     }
 
@@ -2265,29 +2275,7 @@
     });
 
     
-    // Auto-hide Player Floating Controls when mouse is idle or leaves
-    let playerControlsHideTimer = null;
-    function showPlayerFloatingControls() {
-      const c = document.getElementById('playerFloatingControls');
-      if (!c) return;
-      c.classList.remove('opacity-0', 'pointer-events-none');
-      c.classList.add('opacity-100', 'pointer-events-auto');
-      if (playerControlsHideTimer) clearTimeout(playerControlsHideTimer);
-      playerControlsHideTimer = setTimeout(hidePlayerFloatingControls, 2800);
-    }
 
-    function hidePlayerFloatingControls() {
-      const c = document.getElementById('playerFloatingControls');
-      if (!c) return;
-      c.classList.add('opacity-0', 'pointer-events-none');
-      c.classList.remove('opacity-100', 'pointer-events-auto');
-      if (playerControlsHideTimer) clearTimeout(playerControlsHideTimer);
-    }
-
-    playerViewport.addEventListener('mousemove', showPlayerFloatingControls);
-    playerViewport.addEventListener('mouseenter', showPlayerFloatingControls);
-    playerViewport.addEventListener('mouseleave', hidePlayerFloatingControls);
-    playerViewport.addEventListener('touchstart', showPlayerFloatingControls, { passive: true });
 
 
     // Website Config Floating Modal
