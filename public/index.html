@@ -473,7 +473,7 @@
             <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             播放线路
           </div>
-          <div id="lineTabs" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"></div>
+          <div id="lineTabs" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1.5 scrollbar-none"></div>
         </div>
 
         <!-- Episodes Section (Enhanced with 4-per-row Layout & Active Episode Highlight) -->
@@ -781,7 +781,7 @@
         if (parsedLines.length > 1) {
           parsedLines.forEach((line, lIdx) => {
             const btn = document.createElement('button');
-            btn.className = `px-3 py-1.5 rounded-lg text-xs font-medium transition flex-shrink-0 cursor-pointer ${
+            btn.className = `px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap flex-shrink-0 transition cursor-pointer ${
               lIdx === currentLineIndex ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white/10 text-gray-300 hover:bg-white/20'
             }`;
             btn.textContent = line.name;
@@ -1610,10 +1610,11 @@
       }
     }
 
-    // Helper: Create a single Video Card element
+    // Helper: Create a single Video Card element (支持单击打开，长按直接全网聚合搜索同名资源)
     function createVideoCardElement(item, site = null) {
       const card = document.createElement('div');
-      card.className = 'group relative flex flex-col bg-dark-800 rounded-xl overflow-hidden border border-gray-800/80 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer hover:-translate-y-1';
+      card.className = 'group relative flex flex-col bg-dark-800 rounded-xl overflow-hidden border border-gray-800/80 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98] select-none';
+      card.title = `${item.vod_name} (单击播放详情，长按图片全网搜索同名资源)`;
       
       const pic = item.vod_pic || '';
       const remarks = item.vod_remarks || '';
@@ -1621,11 +1622,11 @@
 
       card.innerHTML = `
         <div class="relative w-full pb-[142%] bg-dark-750 overflow-hidden">
-          <img src="${pic}" alt="${item.vod_name}" loading="lazy" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/300x420/1f2937/9ca3af?text=No+Poster'">
-          <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-85 group-hover:opacity-60 transition"></div>
-          ${remarks ? `<span class="absolute top-2 right-2 bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow">${remarks}</span>` : ''}
-          ${siteTag ? `<span class="absolute bottom-2 left-2 bg-dark-900/80 backdrop-blur text-gray-300 text-[10px] px-1.5 py-0.5 rounded border border-gray-700/60 max-w-[85%] truncate">${siteTag}</span>` : ''}
-          <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <img src="${pic}" alt="${item.vod_name}" loading="lazy" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none" onerror="this.src='https://placehold.co/300x420/1f2937/9ca3af?text=No+Poster'">
+          <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-85 group-hover:opacity-60 transition pointer-events-none"></div>
+          ${remarks ? `<span class="absolute top-2 right-2 bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow pointer-events-none">${remarks}</span>` : ''}
+          ${siteTag ? `<span class="absolute bottom-2 left-2 bg-dark-900/80 backdrop-blur text-gray-300 text-[10px] px-1.5 py-0.5 rounded border border-gray-700/60 max-w-[85%] truncate pointer-events-none">${siteTag}</span>` : ''}
+          <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
             <div class="w-12 h-12 rounded-full bg-indigo-600/90 text-white flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition">
               <svg class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             </div>
@@ -1637,7 +1638,83 @@
         </div>
       `;
 
-      card.onclick = () => openDetail(item.vod_id, null, site);
+      // Long-press vs Click gesture detection
+      let pressTimer = null;
+      let isLongPress = false;
+      let startX = 0, startY = 0;
+
+      const cancelPress = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+      };
+
+      const triggerSearchByPoster = () => {
+        isLongPress = true;
+        if (navigator.vibrate) {
+          try { navigator.vibrate(45); } catch (e) {}
+        }
+        showToast(`🔍 正在全网聚合搜索同名资源: 《${item.vod_name}》`);
+        searchInput.value = item.vod_name;
+        performSearch();
+      };
+
+      // Mouse Long-Press
+      card.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // Only primary mouse button
+        isLongPress = false;
+        cancelPress();
+        pressTimer = setTimeout(triggerSearchByPoster, 520);
+      });
+
+      card.addEventListener('mouseup', () => {
+        cancelPress();
+      });
+
+      card.addEventListener('mouseleave', () => {
+        cancelPress();
+      });
+
+      // Touch Long-Press (Mobile & Tablet with drag-cancel for scrolling)
+      card.addEventListener('touchstart', (e) => {
+        isLongPress = false;
+        cancelPress();
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        pressTimer = setTimeout(triggerSearchByPoster, 520);
+      }, { passive: true });
+
+      card.addEventListener('touchmove', (e) => {
+        if (!pressTimer) return;
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - startX);
+        const dy = Math.abs(touch.clientY - startY);
+        if (dx > 10 || dy > 10) {
+          cancelPress();
+        }
+      }, { passive: true });
+
+      card.addEventListener('touchend', () => {
+        cancelPress();
+      });
+
+      card.addEventListener('touchcancel', () => {
+        cancelPress();
+      });
+
+      // Click handler
+      card.addEventListener('click', (e) => {
+        if (isLongPress) {
+          e.preventDefault();
+          e.stopPropagation();
+          isLongPress = false;
+          return;
+        }
+        openDetail(item.vod_id, null, site);
+      });
+
       return card;
     }
 
@@ -1973,7 +2050,9 @@
       container.innerHTML = '';
       parsedLines.forEach((line, idx) => {
         const btn = document.createElement('button');
-        btn.className = `px-3 py-1 rounded-lg text-xs font-medium transition ${idx === currentLineIndex ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 hover:bg-dark-700 text-gray-300'}`;
+        btn.className = `px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap flex-shrink-0 transition cursor-pointer ${
+          idx === currentLineIndex ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 hover:bg-dark-700 text-gray-300 hover:text-white'
+        }`;
         btn.textContent = line.name;
         btn.onclick = () => {
           currentLineIndex = idx;
