@@ -56,4 +56,10 @@ release_apk/
 data/
 *.db
 
+# 7. Local Process & Service Management Scripts
+start_silent.bat
+start_silent.vbs
+stop.bat
+stop.ps1
+
 
