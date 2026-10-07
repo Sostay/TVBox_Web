@@ -238,7 +238,7 @@
     <!-- 3. Loading Spinner -->
     <div id="loadingIndicator" class="hidden flex flex-col items-center justify-center py-24 gap-3 text-gray-400">
       <div class="w-9 h-9 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-      <p class="text-xs text-gray-400 tracking-wide">正在解析并拉取资源列表...</p>
+      <p id="loadingText" class="text-xs text-gray-400 tracking-wide">正在解析并拉取资源列表...</p>
     </div>
 
     <!-- 4. Empty Result Notice -->
@@ -335,8 +335,8 @@
           <span class="text-xs text-gray-300 tracking-wide">正在解析播放直链并拉取视频流...</span>
         </div>
 
-        <!-- Top Right Floating Action Controls -->
-        <div class="absolute top-3 right-3 flex items-center gap-2 z-20 opacity-90 group-hover:opacity-100 transition">
+        <!-- Top Right Floating Action Controls (Hidden by default, shown on hover/touch) -->
+        <div id="playerFloatingControls" class="absolute top-3 right-3 flex items-center gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
           <!-- Web Fullscreen Toggle Button (Pure Icon) -->
           <button id="webFullscreenBtn" onclick="toggleWebFullscreen()" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow" title="网页全屏切换 (按 W 或点击)">
             <svg id="webFullscreenIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
@@ -920,12 +920,13 @@
     }
 
     // Helper to resolve spider route dynamically across Node and Android backends
-    function getSpiderApiUrl(action) {
-      if (!currentSite) return '';
-      if (currentSite.api && currentSite.api.startsWith('/spider/')) {
-        return `/api${currentSite.api}/${action}`;
+    function getSpiderApiUrl(action, site = null) {
+      const s = site || currentSite;
+      if (!s) return '';
+      if (s.api && s.api.startsWith('/spider/')) {
+        return `/api${s.api}/${action}`;
       } else {
-        return `/api/spider/${encodeURIComponent(currentSite.key || currentSite.name)}/${action}`;
+        return `/api/spider/${encodeURIComponent(s.key || s.name)}/${action}`;
       }
     }
 
@@ -1138,29 +1139,38 @@
       }
     }
 
-    // Search
-    async function performSearch() {
-      const wd = searchInput.value.trim();
-      if (!wd) return showToast('请输入搜索关键词');
-      if (!currentSite) return;
+    // Helper: Create a single Video Card element
+    function createVideoCardElement(item, site = null) {
+      const card = document.createElement('div');
+      card.className = 'group relative flex flex-col bg-dark-800 rounded-xl overflow-hidden border border-gray-800/80 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer transform hover:-translate-y-1';
+      
+      const pic = item.vod_pic || '';
+      const remarks = item.vod_remarks || '';
+      const siteTag = site ? (site.name || '') : '';
 
-      addSearchHistory(wd);
-      searchHistoryPopover.classList.add('hidden');
-      setLoading(true);
-      siteErrorCard.classList.add('hidden');
-      videoGrid.innerHTML = '';
+      card.innerHTML = `
+        <div class="relative w-full pb-[142%] bg-dark-750 overflow-hidden">
+          <img src="${pic}" alt="${item.vod_name}" loading="lazy" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/300x420/1f2937/9ca3af?text=No+Poster'">
+          <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-85 group-hover:opacity-60 transition"></div>
+          ${remarks ? `<span class="absolute top-2 right-2 bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow">${remarks}</span>` : ''}
+          ${siteTag ? `<span class="absolute bottom-2 left-2 bg-dark-900/80 backdrop-blur text-gray-300 text-[10px] px-1.5 py-0.5 rounded border border-gray-700/60 max-w-[85%] truncate">${siteTag}</span>` : ''}
+          <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div class="w-12 h-12 rounded-full bg-indigo-600/90 text-white flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition">
+              <svg class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between">
+          <h3 class="text-xs sm:text-sm font-semibold text-gray-200 group-hover:text-indigo-400 transition truncate" title="${item.vod_name}">${item.vod_name}</h3>
+          <span class="text-[11px] text-gray-500 mt-1 truncate">${item.vod_actor || item.type_name || ''}</span>
+        </div>
+      `;
 
-      try {
-        const data = await safeFetchJson(getSpiderApiUrl('search'), { wd, pg: 1 });
-        renderVideoCards(data.list || []);
-      } catch (err) {
-        handleSiteError(err);
-      } finally {
-        setLoading(false);
-      }
+      card.onclick = () => openDetail(item.vod_id, null, site);
+      return card;
     }
 
-    // Render Cards
+    // Render Cards in Normal (Home/Category) View
     function renderVideoCards(items) {
       videoGrid.innerHTML = '';
       if (!items || items.length === 0) {
@@ -1170,32 +1180,177 @@
       setEmpty(false);
 
       items.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'group relative flex flex-col bg-dark-800 rounded-xl overflow-hidden border border-gray-800/80 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer transform hover:-translate-y-1';
-        
-        const pic = item.vod_pic || '';
-        const remarks = item.vod_remarks || '';
-
-        card.innerHTML = `
-          <div class="relative w-full pb-[142%] bg-dark-750 overflow-hidden">
-            <img src="${pic}" alt="${item.vod_name}" loading="lazy" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/300x420/1f2937/9ca3af?text=No+Poster'">
-            <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-85 group-hover:opacity-60 transition"></div>
-            ${remarks ? `<span class="absolute top-2 right-2 bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow">${remarks}</span>` : ''}
-            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div class="w-12 h-12 rounded-full bg-indigo-600/90 text-white flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition">
-                <svg class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              </div>
-            </div>
-          </div>
-          <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between">
-            <h3 class="text-xs sm:text-sm font-semibold text-gray-200 group-hover:text-indigo-400 transition truncate" title="${item.vod_name}">${item.vod_name}</h3>
-            <span class="text-[11px] text-gray-500 mt-1 truncate">${item.vod_actor || item.type_name || ''}</span>
-          </div>
-        `;
-
-        card.onclick = () => openDetail(item.vod_id);
+        const card = createVideoCardElement(item, currentSite);
         videoGrid.appendChild(card);
       });
+    }
+
+    // ==============================================================
+    // Multi-Source Aggregated Search Engine (全源并发聚合搜索)
+    // ==============================================================
+    window.__lastGroupedResults = [];
+    window.__lastSearchKeyword = '';
+
+    async function performSearch() {
+      const wd = searchInput.value.trim();
+      if (!wd) return showToast('请输入搜索关键词');
+
+      addSearchHistory(wd);
+      searchHistoryPopover.classList.add('hidden');
+      setLoading(true);
+      siteErrorCard.classList.add('hidden');
+      videoGrid.innerHTML = '';
+
+      // Collect searchable sites from current configuration
+      const allSites = currentConfig?.video?.sites || currentConfig?.sites || [];
+      const searchableSites = allSites.filter(s => s && s.api && s.searchable !== 0 && s.searchable !== false);
+
+      if (!searchableSites.length && currentSite) {
+        searchableSites.push(currentSite);
+      }
+
+      if (!searchableSites.length) {
+        setLoading(false);
+        setEmpty(true);
+        return showToast('当前未加载任何可用源，请先配置源');
+      }
+
+      let finishedCount = 0;
+      const loadingTextEl = document.getElementById('loadingText');
+      const updateSearchProgress = () => {
+        if (loadingTextEl) {
+          loadingTextEl.textContent = `正在全网聚合搜索「${wd}」... (已完成 ${finishedCount} / ${searchableSites.length} 个源)`;
+        }
+      };
+      updateSearchProgress();
+
+      // Concurrently query sites with a safe 6.5s timeout per source
+      const searchPromises = searchableSites.map(async (site) => {
+        try {
+          const url = getSpiderApiUrl('search', site);
+          const res = await Promise.race([
+            safeFetchJson(url, { wd, pg: 1 }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6500))
+          ]);
+          const list = (res && Array.isArray(res.list)) ? res.list : [];
+          return { site, list: list.filter(item => item && (item.vod_id || item.vod_name)) };
+        } catch {
+          return { site, list: [] };
+        } finally {
+          finishedCount++;
+          updateSearchProgress();
+        }
+      });
+
+      const settled = await Promise.all(searchPromises);
+      const groupedResults = settled.filter(g => g.list && g.list.length > 0);
+
+      window.__lastGroupedResults = groupedResults;
+      window.__lastSearchKeyword = wd;
+      setLoading(false);
+
+      if (!groupedResults.length) {
+        setEmpty(true);
+        showToast(`在所有源中均未找到与「${wd}」相关的影视资源`);
+      } else {
+        renderGroupedSearchResults(wd, groupedResults, null);
+      }
+    }
+
+    // Render Search Results Grouped by Source (按源分类显示搜索结果)
+    function renderGroupedSearchResults(wd, groupedResults, activeFilterSiteKey = null) {
+      videoGrid.innerHTML = '';
+      emptyNotice.classList.add('hidden');
+      siteErrorCard.classList.add('hidden');
+
+      if (!groupedResults || !groupedResults.length) {
+        setEmpty(true);
+        return;
+      }
+      setEmpty(false);
+
+      const totalCount = groupedResults.reduce((acc, g) => acc + g.list.length, 0);
+
+      // Wrapper container spanning full width
+      const wrapper = document.createElement('div');
+      wrapper.className = 'col-span-full space-y-6';
+
+      // 1. Search Result Header Summary & Source Filter Tabs
+      const headerBar = document.createElement('div');
+      headerBar.className = 'p-4 bg-dark-800 rounded-2xl border border-gray-800 shadow-md space-y-3';
+      
+      let tabsHtml = `
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/50"></span>
+            <span class="text-xs sm:text-sm font-bold text-white">全网聚合搜索「${wd}」</span>
+            <span class="text-xs text-indigo-400 bg-indigo-950/70 border border-indigo-800/80 px-2 py-0.5 rounded-full font-mono">共 ${totalCount} 部影片 · 涵盖 ${groupedResults.length} 个源</span>
+          </div>
+          <button onclick="goHome()" class="text-xs text-gray-400 hover:text-white transition flex items-center gap-1">
+            返回推荐首页 ➔
+          </button>
+        </div>
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          <button onclick="renderGroupedSearchResults('${wd}', window.__lastGroupedResults, null)" class="filter-tab flex-shrink-0 px-3 py-1.5 rounded-xl font-medium transition ${activeFilterSiteKey === null ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 text-gray-300 hover:bg-dark-700'}">
+            全部源 (${totalCount})
+          </button>
+      `;
+
+      groupedResults.forEach(g => {
+        const key = g.site.key || g.site.name;
+        const isTabActive = (activeFilterSiteKey === key);
+        tabsHtml += `
+          <button onclick="renderGroupedSearchResults('${wd}', window.__lastGroupedResults, '${key}')" class="filter-tab flex-shrink-0 px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${isTabActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 text-gray-300 hover:bg-dark-700'}">
+            <span>${g.site.name}</span>
+            <span class="text-[10px] ${isTabActive ? 'bg-indigo-700' : 'bg-dark-850'} px-1.5 py-0.2 rounded-full font-mono text-gray-200">${g.list.length}</span>
+          </button>
+        `;
+      });
+      tabsHtml += `</div>`;
+      headerBar.innerHTML = tabsHtml;
+      wrapper.appendChild(headerBar);
+
+      // 2. Sections per Source
+      const displayedGroups = activeFilterSiteKey
+        ? groupedResults.filter(g => (g.site.key === activeFilterSiteKey || g.site.name === activeFilterSiteKey))
+        : groupedResults;
+
+      displayedGroups.forEach(g => {
+        const section = document.createElement('div');
+        section.className = 'bg-dark-850/50 p-4 sm:p-5 rounded-2xl border border-gray-800/80 space-y-3.5';
+
+        section.innerHTML = `
+          <div class="flex items-center justify-between border-b border-gray-800/80 pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/40"></span>
+              <h3 class="font-bold text-sm sm:text-base text-white">【${g.site.name}】</h3>
+              <span class="text-[11px] text-indigo-400 bg-indigo-950/80 border border-indigo-800 px-2 py-0.5 rounded-full font-mono font-medium">${g.list.length} 部</span>
+            </div>
+            <button class="set-main-site-btn text-xs text-gray-400 hover:text-indigo-400 transition flex items-center gap-1 font-medium">
+              设为主站点 ➔
+            </button>
+          </div>
+          <div class="section-cards-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4"></div>
+        `;
+
+        section.querySelector('.set-main-site-btn').onclick = () => {
+          currentSite = g.site;
+          const sites = currentConfig?.video?.sites || currentConfig?.sites || [];
+          const idx = sites.indexOf(g.site);
+          if (idx !== -1) siteSelect.value = idx;
+          showToast(`已切换当前主站点至: ${g.site.name}`);
+          loadSiteHome();
+        };
+
+        const grid = section.querySelector('.section-cards-grid');
+        g.list.forEach(item => {
+          grid.appendChild(createVideoCardElement(item, g.site));
+        });
+
+        wrapper.appendChild(section);
+      });
+
+      videoGrid.appendChild(wrapper);
     }
 
     // ==============================================================
@@ -1615,6 +1770,31 @@
         closeSourceDropdown();
       }
     });
+
+    
+    // Auto-hide Player Floating Controls when mouse is idle or leaves
+    let playerControlsHideTimer = null;
+    function showPlayerFloatingControls() {
+      const c = document.getElementById('playerFloatingControls');
+      if (!c) return;
+      c.classList.remove('opacity-0', 'pointer-events-none');
+      c.classList.add('opacity-100', 'pointer-events-auto');
+      if (playerControlsHideTimer) clearTimeout(playerControlsHideTimer);
+      playerControlsHideTimer = setTimeout(hidePlayerFloatingControls, 2800);
+    }
+
+    function hidePlayerFloatingControls() {
+      const c = document.getElementById('playerFloatingControls');
+      if (!c) return;
+      c.classList.add('opacity-0', 'pointer-events-none');
+      c.classList.remove('opacity-100', 'pointer-events-auto');
+      if (playerControlsHideTimer) clearTimeout(playerControlsHideTimer);
+    }
+
+    playerViewport.addEventListener('mousemove', showPlayerFloatingControls);
+    playerViewport.addEventListener('mouseenter', showPlayerFloatingControls);
+    playerViewport.addEventListener('mouseleave', hidePlayerFloatingControls);
+    playerViewport.addEventListener('touchstart', showPlayerFloatingControls, { passive: true });
 
     // Bootstrap
     loadSavedSources();
