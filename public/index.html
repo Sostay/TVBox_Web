@@ -604,7 +604,8 @@
 
     function updateDocTitle(title) {
       if (title && title.trim()) {
-        document.title = `${title.trim()} - TVBox Web`;
+        // Direct title without redundant suffix to avoid duplicate "TVBox Web - Title - TVBox Web" in PWA/browser
+        document.title = title.trim();
       } else {
         document.title = 'TVBox Web';
       }
