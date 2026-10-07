@@ -62,6 +62,27 @@ public class WebServer extends NanoHTTPD {
                 return resp;
             }
 
+            // 1.0 PWA & Static Assets
+            if (uri.equals("/manifest.webmanifest") || uri.equals("/manifest.json")) {
+                InputStream is = mContext.getAssets().open("web/manifest.webmanifest");
+                Response resp = newChunkedResponse(Response.Status.OK, "application/manifest+json; charset=utf-8", is);
+                addCorsHeaders(resp);
+                return resp;
+            }
+            if (uri.equals("/sw.js")) {
+                InputStream is = mContext.getAssets().open("web/sw.js");
+                Response resp = newChunkedResponse(Response.Status.OK, "application/javascript; charset=utf-8", is);
+                addCorsHeaders(resp);
+                return resp;
+            }
+            if (uri.equals("/icon-192.png") || uri.equals("/icon-512.png") || uri.equals("/favicon.ico")) {
+                String assetFile = uri.substring(1);
+                InputStream is = mContext.getAssets().open("web/" + assetFile);
+                Response resp = newChunkedResponse(Response.Status.OK, uri.endsWith(".ico") ? "image/x-icon" : "image/png", is);
+                addCorsHeaders(resp);
+                return resp;
+            }
+
             // 1.1 Cloud Drive Config Center Web UI (/website)
             if (uri.equals("/website") || uri.equals("/website/") || uri.equals("/website/index.html")) {
                 InputStream is = mContext.getAssets().open("web/website.html");
@@ -456,7 +477,8 @@ public class WebServer extends NanoHTTPD {
     }
 
     private Response jsonResponse(String json, Response.IStatus status) {
-        Response resp = newFixedLengthResponse(status, "application/json; charset=utf-8", json);
+        String safeJson = (json == null || json.trim().isEmpty()) ? "{}" : json.trim();
+        Response resp = newFixedLengthResponse(status, "application/json; charset=utf-8", safeJson);
         addCorsHeaders(resp);
         return resp;
     }

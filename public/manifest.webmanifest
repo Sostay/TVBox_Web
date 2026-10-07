@@ -1,0 +1,27 @@
+{
+  "name": "TVBox Web 影视中心",
+  "short_name": "TVBox Web",
+  "description": "跨平台双引擎影视聚合播放器",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B0F19",
+  "theme_color": "#0B0F19",
+  "categories": ["entertainment", "video"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

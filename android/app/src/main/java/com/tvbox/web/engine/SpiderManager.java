@@ -270,17 +270,64 @@ public class SpiderManager {
         }
 
         try {
-            String fullClassName = apiClass.startsWith("csp_")
-                    ? "com.github.catvod.spider." + apiClass.substring(4)
-                    : apiClass;
+            String spiderSimpleName = apiClass.startsWith("csp_") ? apiClass.substring(4) : apiClass;
+            String fullClassName = "com.github.catvod.spider." + spiderSimpleName;
+
+            // Strategy 1: Try Init.getSpider(name) from inner packer
+            try {
+                Class<?> initClz = mClassLoader.loadClass("com.github.catvod.spider.Init");
+                Method getSpiderM = initClz.getMethod("getSpider", String.class);
+                Object sp = getSpiderM.invoke(null, spiderSimpleName);
+                if (sp == null) {
+                    sp = getSpiderM.invoke(null, apiClass);
+                }
+                if (sp != null) {
+                    try {
+                        java.lang.reflect.Field field = sp.getClass().getField("siteKey");
+                        field.set(sp, cacheKey.split("#")[0]);
+                    } catch (Throwable ignored) {}
+
+                    try {
+                        Method initMethod = sp.getClass().getMethod("init", Context.class, String.class);
+                        initMethod.invoke(sp, mContext, ext != null ? ext : "");
+                    } catch (NoSuchMethodException e) {
+                        try {
+                            Method initMethod = sp.getClass().getMethod("init", Context.class);
+                            initMethod.invoke(sp, mContext);
+                        } catch (NoSuchMethodException ignored) {}
+                    }
+                    mSpiderCache.put(cacheKey, sp);
+                    return sp;
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "Init.getSpider strategy note: " + t.getMessage());
+            }
+
+            // Strategy 2: Try inner ClassLoader from Init.loader()
+            ClassLoader targetLoader = mClassLoader;
+            try {
+                Class<?> initClz = mClassLoader.loadClass("com.github.catvod.spider.Init");
+                Method loaderM = initClz.getMethod("loader");
+                Object l = loaderM.invoke(null);
+                if (l instanceof ClassLoader) {
+                    targetLoader = (ClassLoader) l;
+                }
+            } catch (Throwable ignored) {}
 
             Class<?> clazz = null;
             try {
-                clazz = mClassLoader.loadClass(fullClassName);
+                clazz = targetLoader.loadClass(fullClassName);
             } catch (ClassNotFoundException e) {
                 try {
-                    clazz = mClassLoader.loadClass("com.github.catvod.spider." + apiClass);
-                } catch (ClassNotFoundException ignored) {
+                    clazz = targetLoader.loadClass(apiClass);
+                } catch (ClassNotFoundException e2) {
+                    try {
+                        clazz = mClassLoader.loadClass(fullClassName);
+                    } catch (ClassNotFoundException e3) {
+                        try {
+                            clazz = mClassLoader.loadClass(apiClass);
+                        } catch (ClassNotFoundException ignored) {}
+                    }
                 }
             }
 
@@ -336,7 +383,10 @@ public class SpiderManager {
         try {
             Method m = spider.getClass().getMethod("homeContent", boolean.class);
             Object res = m.invoke(spider, true);
-            String homeStr = res != null ? res.toString() : "{}";
+            String homeStr = (res != null) ? res.toString().trim() : "";
+            if (homeStr.isEmpty() || !homeStr.startsWith("{")) {
+                homeStr = "{\"list\":[],\"class\":[]}";
+            }
 
             try {
                 JsonObject obj = mGson.fromJson(homeStr, JsonObject.class);
@@ -360,61 +410,77 @@ public class SpiderManager {
             return homeStr;
         } catch (Exception e) {
             Log.e(TAG, "callHome error: " + e.getMessage(), e);
-            return "{\"error\":\"callHome异常: " + e.getMessage() + "\",\"list\":[]}";
+            return "{\"error\":\"callHome异常: " + e.getMessage() + "\",\"list\":[],\"class\":[]}";
         }
     }
 
     public String callCategory(String apiClass, String ext, String tid, String pg) {
         Object spider = getSpider(apiClass, ext);
-        if (spider == null) return "{}";
+        if (spider == null) return "{\"page\":1,\"pagecount\":1,\"limit\":20,\"total\":0,\"list\":[]}";
         try {
             Method m = spider.getClass().getMethod("categoryContent", String.class, String.class, boolean.class, HashMap.class);
             Object res = m.invoke(spider, tid, pg, true, new HashMap<>());
-            return res != null ? res.toString() : "{}";
+            String catStr = (res != null) ? res.toString().trim() : "";
+            if (catStr.isEmpty() || !catStr.startsWith("{")) {
+                catStr = "{\"page\":1,\"pagecount\":1,\"limit\":20,\"total\":0,\"list\":[]}";
+            }
+            return catStr;
         } catch (Exception e) {
             Log.e(TAG, "callCategory error: " + e.getMessage(), e);
-            return "{}";
+            return "{\"page\":1,\"pagecount\":1,\"limit\":20,\"total\":0,\"list\":[]}";
         }
     }
 
     public String callDetail(String apiClass, String ext, String vodId) {
         Object spider = getSpider(apiClass, ext);
-        if (spider == null) return "{}";
+        if (spider == null) return "{\"list\":[]}";
         try {
             List<String> ids = new ArrayList<>();
             ids.add(vodId);
             Method m = spider.getClass().getMethod("detailContent", List.class);
             Object res = m.invoke(spider, ids);
-            return res != null ? res.toString() : "{}";
+            String detailStr = (res != null) ? res.toString().trim() : "";
+            if (detailStr.isEmpty() || !detailStr.startsWith("{")) {
+                detailStr = "{\"list\":[]}";
+            }
+            return detailStr;
         } catch (Exception e) {
             Log.e(TAG, "callDetail error: " + e.getMessage(), e);
-            return "{}";
+            return "{\"list\":[]}";
         }
     }
 
     public String callPlay(String apiClass, String ext, String flag, String id) {
         Object spider = getSpider(apiClass, ext);
-        if (spider == null) return "{}";
+        if (spider == null) return "{\"parse\":0,\"url\":\"\"}";
         try {
             Method m = spider.getClass().getMethod("playerContent", String.class, String.class, List.class);
             Object res = m.invoke(spider, flag, id, new ArrayList<>());
-            return res != null ? res.toString() : "{}";
+            String playStr = (res != null) ? res.toString().trim() : "";
+            if (playStr.isEmpty() || !playStr.startsWith("{")) {
+                playStr = "{\"parse\":0,\"url\":\"\"}";
+            }
+            return playStr;
         } catch (Exception e) {
             Log.e(TAG, "callPlay error: " + e.getMessage(), e);
-            return "{}";
+            return "{\"parse\":0,\"url\":\"\"}";
         }
     }
 
     public String callSearch(String apiClass, String ext, String keyword, String pg) {
         Object spider = getSpider(apiClass, ext);
-        if (spider == null) return "{}";
+        if (spider == null) return "{\"page\":1,\"pagecount\":1,\"list\":[]}";
         try {
             Method m = spider.getClass().getMethod("searchContent", String.class, boolean.class, String.class);
             Object res = m.invoke(spider, keyword, false, pg);
-            return res != null ? res.toString() : "{}";
+            String searchStr = (res != null) ? res.toString().trim() : "";
+            if (searchStr.isEmpty() || !searchStr.startsWith("{")) {
+                searchStr = "{\"page\":1,\"pagecount\":1,\"list\":[]}";
+            }
+            return searchStr;
         } catch (Exception e) {
             Log.e(TAG, "callSearch error: " + e.getMessage(), e);
-            return "{}";
+            return "{\"page\":1,\"pagecount\":1,\"list\":[]}";
         }
     }
 

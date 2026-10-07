@@ -3,8 +3,20 @@
 <head>
   <meta name="referrer" content="no-referrer">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TVBox Web 影视聚合中心</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TVBox Web 影视中心</title>
+
+  <!-- PWA & Mobile Meta -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#0B0F19">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TVBox Web">
+
+  <!-- Tailwind CSS & HLS.js -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
   <script>
@@ -14,7 +26,7 @@
         extend: {
           colors: {
             brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
-            dark: { 900: '#0b0f19', 800: '#111827', 700: '#1f2937', 600: '#374151' }
+            dark: { 950: '#070a12', 900: '#0b0f19', 850: '#0e1422', 800: '#111827', 750: '#182235', 700: '#1f2937', 600: '#374151' }
           }
         }
       }
@@ -31,62 +43,110 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    /* Web Fullscreen Mode */
+    body.is-web-fullscreen {
+      overflow: hidden !important;
+    }
+    .modal-web-fullscreen {
+      padding: 0 !important;
+      margin: 0 !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      border-radius: 0 !important;
+      border: 0 !important;
+    }
   </style>
 </head>
-<body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col font-sans select-none">
+<body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col font-sans select-none antialiased">
 
-  <!-- Header -->
-  <header class="sticky top-0 z-40 bg-dark-800/90 backdrop-blur border-b border-gray-800 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+  <!-- Header Navbar -->
+  <header class="sticky top-0 z-40 bg-dark-800/95 backdrop-blur border-b border-gray-800 px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md">
+    <!-- Brand Logo -->
+    <div class="flex items-center gap-2.5 cursor-pointer" onclick="goHome()">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
       </div>
       <div>
-        <h1 class="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">TVBox Web</h1>
-        <p class="text-[11px] text-gray-400">跨平台双引擎影视端</p>
+        <h1 class="font-bold text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-gray-100 to-gray-400 bg-clip-text text-transparent">TVBox Web</h1>
+        <p class="text-[10px] text-gray-400 hidden sm:block">跨平台双引擎影视端</p>
       </div>
     </div>
 
-    <!-- Center Search & Source Selector -->
-    <div class="flex flex-1 max-w-2xl items-center gap-3">
+    <!-- Center Search & Site Selector Area -->
+    <div class="flex flex-1 max-w-2xl items-center gap-2 sm:gap-3 relative">
       <!-- Site Selector -->
-      <div class="relative w-48 flex-shrink-0">
-        <select id="siteSelect" class="w-full appearance-none bg-dark-700 border border-gray-700 hover:border-gray-600 text-sm text-gray-200 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition truncate">
+      <div class="relative w-36 sm:w-48 flex-shrink-0">
+        <select id="siteSelect" class="w-full appearance-none bg-dark-750 border border-gray-700/80 hover:border-gray-600 text-xs sm:text-sm text-gray-200 rounded-lg px-2.5 sm:px-3 py-2 pr-7 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition truncate cursor-pointer shadow-inner">
           <option value="">未加载配置源</option>
         </select>
         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </div>
       </div>
 
-      <!-- Search Input -->
-      <div class="relative flex-1">
-        <input type="text" id="searchInput" placeholder="搜索电影、电视剧、动漫..." class="w-full bg-dark-700 border border-gray-700 text-sm text-gray-200 rounded-lg pl-9 pr-14 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-500 transition">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <!-- Search Input Container with History Popover -->
+      <div class="relative flex-1" id="searchContainer">
+        <div class="relative flex items-center">
+          <input type="text" id="searchInput" placeholder="搜索影视、动漫、综艺..." autocomplete="off" class="w-full bg-dark-750 border border-gray-700/80 text-xs sm:text-sm text-gray-200 rounded-lg pl-8 sm:pl-9 pr-14 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-500 transition shadow-inner">
+          <div class="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-gray-400">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+          <button id="searchBtn" class="absolute inset-y-1 right-1 px-2.5 sm:px-3 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-md text-white transition flex items-center shadow">
+            搜索
+          </button>
         </div>
-        <button id="searchBtn" class="absolute inset-y-1 right-1 px-3 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-md text-white transition flex items-center">
-          搜索
-        </button>
+
+        <!-- Search History Dropdown Popover -->
+        <div id="searchHistoryPopover" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-dark-800 border border-gray-700 rounded-xl shadow-2xl p-3 z-50 text-xs divide-y divide-gray-700/60">
+          <div class="flex items-center justify-between pb-2 text-gray-400">
+            <span class="flex items-center gap-1.5 font-medium text-[11px]">
+              <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              最近搜索
+            </span>
+            <button onclick="clearSearchHistory()" class="text-[11px] text-gray-500 hover:text-red-400 transition">清空</button>
+          </div>
+          <div id="searchHistoryList" class="pt-2 flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+            <!-- Chips injected dynamically -->
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="flex items-center gap-2">
-      <!-- Source Quick Switch Dropdown & Manager -->
+    <!-- Actions Area -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <!-- PWA Install Button (Hidden by default, shown when installable) -->
+      <button id="pwaInstallBtn" class="hidden items-center gap-1.5 px-2.5 py-1.5 bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-500/50 rounded-lg text-xs font-medium text-white transition shadow-sm" title="安装 TVBox Web 到桌面">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        <span class="hidden md:inline">安装应用</span>
+      </button>
+
+      <!-- Play History Button -->
+      <button id="openHistoryBtn" class="relative flex items-center gap-1.5 px-2.5 py-1.5 bg-dark-750 hover:bg-dark-700 border border-gray-700 rounded-lg text-xs font-medium text-gray-200 transition shadow-sm" title="播放历史记录">
+        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="hidden sm:inline">历史</span>
+        <span id="historyBadge" class="hidden text-[10px] bg-indigo-600 text-white px-1.5 py-0.2 rounded-full font-mono">0</span>
+      </button>
+
+      <!-- Source Quick Switch Split Button -->
       <div class="relative inline-block text-left" id="sourceDropdownContainer">
         <div class="flex items-center rounded-lg bg-indigo-600/90 hover:bg-indigo-600 border border-indigo-500/50 shadow-sm transition">
-          <!-- Main Button: Opens Modal -->
-          <button id="openSourcesBtn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-500/20 rounded-l-lg" title="打开配置源管理器">
+          <button id="openSourcesBtn" class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-500/20 rounded-l-lg" title="打开配置源管理">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7zm0 5h16"/></svg>
-            <span id="sourceBtnText" class="max-w-[130px] truncate">配置源 (<span id="sourceCountBadge">0</span>)</span>
+            <span id="sourceBtnText" class="max-w-[110px] sm:max-w-[130px] truncate">配置源 (<span id="sourceCountBadge">0</span>)</span>
           </button>
-          
-          <!-- Divider -->
           <div class="w-[1px] h-4 bg-indigo-400/40"></div>
-
-          <!-- Dropdown Trigger Arrow -->
-          <button id="sourceDropdownBtn" class="px-2 py-1.5 text-xs text-indigo-100 hover:text-white hover:bg-indigo-500/30 rounded-r-lg transition flex items-center justify-center" title="快速切换已添加的源">
+          <button id="sourceDropdownBtn" class="px-1.5 py-1.5 text-xs text-indigo-100 hover:text-white hover:bg-indigo-500/30 rounded-r-lg transition flex items-center justify-center" title="快速切换已添加的源">
             <svg class="w-3.5 h-3.5 transition-transform duration-200" id="dropdownArrowIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
         </div>
@@ -97,10 +157,7 @@
             <span>快速切换配置源</span>
             <span class="text-[10px] text-indigo-400 font-mono" id="dropdownCurrentLabel">共 0 个源</span>
           </div>
-
-          <div id="dropdownSourcesList" class="max-h-60 overflow-y-auto py-1 space-y-0.5">
-          </div>
-
+          <div id="dropdownSourcesList" class="max-h-60 overflow-y-auto py-1 space-y-0.5"></div>
           <div class="p-1.5 bg-dark-900/60">
             <button onclick="openSourceModal(); closeSourceDropdown();" class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-600/30 transition">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -110,45 +167,47 @@
         </div>
       </div>
 
-      <a href="/website" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 bg-dark-700 hover:bg-dark-600 border border-gray-700 rounded-lg text-xs font-medium text-amber-300 hover:text-amber-200 transition shadow-sm">
+      <!-- Cloud Drive Settings -->
+      <a href="/website" target="_blank" class="flex items-center gap-1 px-2.5 py-1.5 bg-dark-750 hover:bg-dark-700 border border-gray-700 rounded-lg text-xs font-medium text-amber-300 hover:text-amber-200 transition shadow-sm" title="打开网盘扫码配置中心">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
-        网盘扫码
+        <span class="hidden sm:inline">网盘配置</span>
       </a>
 
-      <button id="refreshBtn" title="刷新页面" class="p-2 bg-dark-700 hover:bg-dark-600 border border-gray-700 rounded-lg text-gray-300 transition">
+      <!-- Refresh Page Button -->
+      <button id="refreshBtn" title="刷新页面" class="p-2 bg-dark-750 hover:bg-dark-700 border border-gray-700 rounded-lg text-gray-300 transition">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
       </button>
     </div>
   </header>
 
-  <!-- Categories Sub-header -->
-  <div id="categoryBar" class="bg-dark-900 border-b border-gray-800/80 px-4 lg:px-8 py-2 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
-    <button class="cat-pill active px-3.5 py-1 rounded-full text-xs font-medium bg-indigo-600 text-white" data-tid="">推荐首页</button>
+  <!-- Categories Filter Sub-header -->
+  <div id="categoryBar" class="bg-dark-900 border-b border-gray-800/80 px-3 sm:px-6 py-2 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
+    <button class="cat-pill active px-3.5 py-1 rounded-full text-xs font-medium bg-indigo-600 text-white shadow-sm" data-tid="">推荐首页</button>
   </div>
 
   <!-- Main Content Area -->
-  <main class="flex-1 px-4 lg:px-8 py-6 max-w-[1920px] w-full mx-auto">
-    <!-- 1. Default Empty State (when no sources configured) -->
+  <main class="flex-1 px-3 sm:px-6 py-5 max-w-[1920px] w-full mx-auto">
+    <!-- 1. Default Empty State (No Sources) -->
     <div id="noSourceNotice" class="hidden flex flex-col items-center justify-center py-20 px-4 text-center max-w-lg mx-auto">
       <div class="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4 shadow-inner">
         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
       </div>
       <h2 class="text-xl font-bold text-white mb-2">暂无配置源</h2>
       <p class="text-sm text-gray-400 mb-6 leading-relaxed">
-        系统初始默认为空。请点击下方按钮添加您的 TVBox 源地址（支持 <code class="text-indigo-400">.js.md5</code> 或 <code class="text-indigo-400">.json</code> 订阅地址）。
+        系统初始默认为空，不内置任何第三方地址。请点击下方按钮添加您的 TVBox 订阅地址（支持 <code class="text-indigo-400">.json</code> 或 <code class="text-indigo-400">.js.md5</code> 格式）。
       </p>
       <div class="flex flex-col sm:flex-row gap-3 w-full justify-center">
         <button onclick="openSourceModal()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-xl shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           手动输入新源
         </button>
-        <a href="/website" target="_blank" class="px-5 py-2.5 bg-dark-800 hover:bg-dark-700 border border-gray-700 text-xs font-medium text-gray-200 rounded-xl transition flex items-center justify-center gap-1.5">
+        <a href="/website" target="_blank" class="px-5 py-2.5 bg-dark-800 hover:bg-dark-750 border border-gray-700 text-xs font-medium text-gray-200 rounded-xl transition flex items-center justify-center gap-1.5">
           ⚙️ 前往网盘配置中心
         </a>
       </div>
     </div>
 
-    <!-- 2. Site Error Card (e.g. HTTP 500 / Network Timeout) -->
+    <!-- 2. Site Error Card -->
     <div id="siteErrorCard" class="hidden my-8 p-6 bg-dark-800/90 border border-amber-500/30 rounded-2xl max-w-2xl mx-auto shadow-xl">
       <div class="flex items-start gap-4">
         <div class="p-3 bg-amber-500/10 rounded-xl text-amber-400 flex-shrink-0">
@@ -156,10 +215,10 @@
         </div>
         <div class="flex-1">
           <h3 class="font-bold text-base text-white flex items-center gap-2">
-            当前站点加载失败 (<span id="siteErrorCode" class="text-amber-400 font-mono text-xs">HTTP 500</span>)
+            当前站点加载失败 (<span id="siteErrorCode" class="text-amber-400 font-mono text-xs">异常</span>)
           </h3>
           <p id="siteErrorMessage" class="text-xs text-gray-400 mt-1.5 leading-relaxed">
-            该站点（如玩偶4K、木偶4K）属于网盘聚合类源。通常由于目标网站的镜像域名变更、网络阻断或需要扫码绑定网盘账户导致。
+            站点请求失败，请尝试切换其他线路或站点。
           </p>
           <div class="mt-4 flex flex-wrap gap-2">
             <button onclick="switchQuickWorkingSite('guazi')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition shadow-sm flex items-center gap-1.5">
@@ -173,35 +232,60 @@
               切换到「豆瓣首页」
             </button>
             <a href="/website" target="_blank" class="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-medium transition flex items-center gap-1">
-              ⚙️ 去配置网盘 Token
+              ⚙️ 网盘配置中心
             </a>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 3. Loading Indicator -->
-    <div id="loadingIndicator" class="hidden flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
-      <div class="w-8 h-8 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-      <p class="text-sm">正在加载视频资源...</p>
+    <!-- 3. Loading Spinner -->
+    <div id="loadingIndicator" class="hidden flex flex-col items-center justify-center py-24 gap-3 text-gray-400">
+      <div class="w-9 h-9 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+      <p class="text-xs text-gray-400 tracking-wide">正在解析并拉取资源列表...</p>
     </div>
 
-    <!-- 4. Empty Notice -->
-    <div id="emptyNotice" class="hidden text-center py-20 text-gray-500">
-      <p class="text-base">没有找到相关影片</p>
-      <p class="text-xs text-gray-600 mt-1">请尝试切换其他站点或分类</p>
+    <!-- 4. Empty Result Notice -->
+    <div id="emptyNotice" class="hidden text-center py-24 text-gray-500">
+      <div class="w-12 h-12 mx-auto rounded-full bg-dark-800 flex items-center justify-center text-gray-600 mb-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/></svg>
+      </div>
+      <p class="text-sm font-medium">没有找到相关影片</p>
+      <p class="text-xs text-gray-600 mt-1">请尝试切换其他分类或站点</p>
     </div>
 
-    <!-- 5. Media Cards Grid -->
-    <div id="videoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
-      <!-- Injected dynamically -->
-    </div>
+    <!-- 5. Video Posters Grid -->
+    <div id="videoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4"></div>
   </main>
 
+  <!-- ============================================================== -->
+  <!-- Playback History Slide-over Drawer -->
+  <!-- ============================================================== -->
+  <div id="historyDrawerBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity opacity-0" onclick="closeHistoryDrawer()"></div>
+  <aside id="historyDrawer" class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-dark-850 border-l border-gray-800 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+    <!-- Drawer Header -->
+    <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between bg-dark-900/60">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <h3 class="font-bold text-sm text-white">播放历史记录</h3>
+        <span id="drawerHistoryCount" class="text-[11px] text-gray-500 font-mono">(0)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="clearAllHistory()" class="text-xs text-gray-400 hover:text-red-400 transition px-2 py-1 rounded">清空记录</button>
+        <button onclick="closeHistoryDrawer()" class="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-dark-750 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <!-- Drawer List -->
+    <div id="historyDrawerList" class="flex-1 overflow-y-auto p-4 space-y-2.5 divide-y divide-gray-800/40"></div>
+  </aside>
+
+  <!-- ============================================================== -->
   <!-- Source Management Modal -->
+  <!-- ============================================================== -->
   <div id="sourceModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-dark-800 border border-gray-700 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-      <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7zm0 5h16"/></svg>
@@ -211,9 +295,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-
-      <!-- Modal Body -->
-      <div class="p-6 space-y-6 overflow-y-auto">
+      <div class="p-6 space-y-5 overflow-y-auto">
         <!-- Add Source Form -->
         <div class="p-4 bg-dark-900/60 border border-gray-700/60 rounded-xl space-y-3">
           <h4 class="text-xs font-semibold text-gray-300 uppercase tracking-wider">添加新源</h4>
@@ -223,57 +305,90 @@
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">源地址 URL</label>
-            <input type="text" id="newSourceUrl" placeholder="https://example.com/index.js.md5 或 .json" class="w-full bg-dark-700 border border-gray-600 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono">
+            <input type="text" id="newSourceUrl" placeholder="https://example.com/tvbox.json 或 .js.md5" class="w-full bg-dark-700 border border-gray-600 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono">
           </div>
           <div class="flex items-center justify-between pt-1">
-            <span class="text-[11px] text-gray-500">支持 .js.md5 (Node免安卓) 与 .json 格式</span>
+            <span class="text-[11px] text-gray-500">支持标准 JSON 源 与 Node 跨平台源</span>
             <button onclick="saveNewSource()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white rounded-lg transition shadow">
               保存并生效
             </button>
           </div>
         </div>
-
         <!-- Saved Sources List -->
         <div>
           <h4 class="text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">已保存的源列表</h4>
-          <div id="sourcesList" class="space-y-2">
-            <!-- Injected dynamically -->
-          </div>
+          <div id="sourcesList" class="space-y-2"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Player & Detail Modal -->
+  <!-- ============================================================== -->
+  <!-- Player & Video Detail Modal (Supports Floating Modal & Web Fullscreen) -->
+  <!-- ============================================================== -->
   <div id="playerModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-y-auto">
-    <div class="bg-dark-800 border border-gray-700/80 rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh]">
-      <!-- Video Player Area -->
-      <div class="relative w-full aspect-video bg-black flex items-center justify-center group">
-        <video id="videoElement" controls class="w-full h-full object-contain"></video>
-        <div id="playerLoading" class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 text-white hidden">
-          <div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <span class="text-xs text-gray-300">正在解析直链并拉取流...</span>
+    <div id="playerCard" class="bg-dark-800 border border-gray-700/80 rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh] transition-all duration-300">
+      
+      <!-- Video Player Viewport Container -->
+      <div id="playerViewport" class="relative w-full aspect-video bg-black flex items-center justify-center group overflow-hidden">
+        <video id="videoElement" controls playsinline class="w-full h-full object-contain"></video>
+
+        <!-- Loading spinner on player -->
+        <div id="playerLoading" class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 text-white hidden pointer-events-none z-10">
+          <div class="w-9 h-9 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-xs text-gray-300 tracking-wide">正在解析播放直链并拉取视频流...</span>
         </div>
-        <button id="closeModalBtn" class="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black/80 rounded-full text-white transition z-10">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
+
+        <!-- Top Right Floating Action Controls -->
+        <div class="absolute top-3 right-3 flex items-center gap-2 z-20 opacity-90 group-hover:opacity-100 transition">
+          <!-- Web Fullscreen Toggle Button -->
+          <button id="webFullscreenBtn" onclick="toggleWebFullscreen()" class="px-2.5 py-1.5 bg-black/65 hover:bg-black/85 border border-white/20 rounded-lg text-xs font-medium text-white transition flex items-center gap-1.5 shadow" title="网页全屏切换 (按 W 或点击)">
+            <svg id="webFullscreenIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+            <span id="webFullscreenText" class="text-[11px]">网页全屏</span>
+          </button>
+          <!-- Close Modal Button -->
+          <button id="closeModalBtn" onclick="closePlayerModal()" class="p-1.5 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition shadow" title="关闭播放页 (按 Esc)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
       </div>
 
-      <!-- Detail & Episodes Area -->
-      <div class="p-5 flex-1 overflow-y-auto space-y-4">
-        <!-- Title & Info -->
+      <!-- Detail & Episodes Scrollable Panel -->
+      <div id="detailScrollPanel" class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4">
+        
+        <!-- Video Header Info & Title -->
         <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 id="modalVodName" class="text-xl font-bold text-white">影片加载中...</h2>
-            <div id="modalVodMeta" class="flex flex-wrap items-center gap-2 text-xs text-gray-400 mt-1">
-              <span id="modalVodRemarks" class="bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded border border-indigo-700/50"></span>
-              <span id="modalVodYear"></span>
-              <span id="modalVodArea"></span>
+          <div class="space-y-1 flex-1">
+            <h2 id="modalVodName" class="text-lg sm:text-xl font-bold text-white tracking-tight">影片加载中...</h2>
+            <div id="modalVodMeta" class="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+              <span id="modalVodRemarks" class="bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded border border-indigo-700/50 font-medium"></span>
+              <span id="modalVodYear" class="text-gray-400"></span>
+              <span id="modalVodArea" class="text-gray-400"></span>
+              <span id="modalVodCurrentPlaying" class="hidden text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-2 py-0.5 rounded text-[11px] font-medium flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="currentPlayingLabel">当前播放: 第1集</span>
+              </span>
             </div>
           </div>
         </div>
 
-        <p id="modalVodContent" class="text-xs text-gray-400 line-clamp-2 leading-relaxed"></p>
+        <!-- Resume Playback Notification Banner (Shown if watched before) -->
+        <div id="resumePlayBanner" class="hidden p-2.5 bg-indigo-950/40 border border-indigo-500/40 rounded-xl flex items-center justify-between gap-3 text-xs text-indigo-200">
+          <div class="flex items-center gap-2 truncate">
+            <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="truncate" id="resumePlayText">上次播放到：第 1 集 (05:20)</span>
+          </div>
+          <button id="resumePlayBtn" class="flex-shrink-0 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition shadow">继续播放</button>
+        </div>
+
+        <!-- Description with Expand / Collapse Support -->
+        <div class="relative bg-dark-850/60 p-3 rounded-xl border border-gray-800/60">
+          <p id="modalVodContent" class="text-xs text-gray-400 line-clamp-2 leading-relaxed select-text transition-all"></p>
+          <button id="descToggleBtn" onclick="toggleDescription()" class="hidden text-xs text-indigo-400 hover:text-indigo-300 font-medium mt-1.5 inline-flex items-center gap-1 focus:outline-none">
+            <span id="descToggleText">查看完整简介</span>
+            <svg id="descToggleIcon" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+        </div>
 
         <!-- Lines Tabs -->
         <div>
@@ -284,27 +399,32 @@
           <div id="lineTabs" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"></div>
         </div>
 
-        <!-- Episodes Grid -->
+        <!-- Episodes Section (Enhanced with 4-per-row Layout & Active Episode Highlight) -->
         <div>
-          <div class="text-xs font-semibold text-gray-300 mb-2 flex items-center justify-between">
+          <div class="text-xs font-semibold text-gray-300 mb-2.5 flex items-center justify-between">
             <span class="flex items-center gap-1.5">
               <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
               选集列表 (<span id="episodesCount">0</span>)
             </span>
+            <!-- Layout Density Switcher -->
+            <button id="toggleGridLayoutBtn" onclick="toggleEpisodeGridLayout()" class="text-[11px] text-gray-400 hover:text-indigo-300 transition flex items-center gap-1 bg-dark-750 border border-gray-700/80 px-2 py-0.5 rounded-lg">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+              <span id="gridLayoutText">4列宽幅排版</span>
+            </button>
           </div>
-          <div id="episodesGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-48 overflow-y-auto pr-1"></div>
+          <!-- Episodes Grid Container -->
+          <div id="episodesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Toast Container -->
-  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-dark-700 border border-gray-600 text-white text-xs px-4 py-2.5 rounded-xl shadow-xl transition-all duration-300 opacity-0 pointer-events-none translate-y-2"></div>
+  <!-- Toast Notification Container -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-dark-800 border border-gray-600 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none translate-y-2"></div>
 
+  <!-- Javascript Logic -->
   <script>
-    
-
-    // State
+    // State Variables
     let userSources = [];
     let activeSourceIndex = -1;
     let currentConfig = null;
@@ -314,12 +434,20 @@
     let currentDetail = null;
     let currentLineIndex = 0;
     let parsedLines = [];
+    let currentEpIndex = 0;
+    let currentEpId = '';
+    let currentEpName = '';
     let hlsInstance = null;
+    let isWebFullscreen = false;
+    let isDescriptionExpanded = false;
+    let episodeLayoutWide = true; // Default to 4 columns for long titles
 
     // Elements
     const siteSelect = document.getElementById('siteSelect');
     const searchInput = document.getElementById('searchInput');
     const searchBtn = document.getElementById('searchBtn');
+    const searchHistoryPopover = document.getElementById('searchHistoryPopover');
+    const searchHistoryList = document.getElementById('searchHistoryList');
     const refreshBtn = document.getElementById('refreshBtn');
     const openSourcesBtn = document.getElementById('openSourcesBtn');
     const sourceCountBadge = document.getElementById('sourceCountBadge');
@@ -340,10 +468,12 @@
     const noSourceNotice = document.getElementById('noSourceNotice');
     const siteErrorCard = document.getElementById('siteErrorCard');
     const playerModal = document.getElementById('playerModal');
-    const closeModalBtn = document.getElementById('closeModalBtn');
+    const playerCard = document.getElementById('playerCard');
+    const playerViewport = document.getElementById('playerViewport');
     const videoElement = document.getElementById('videoElement');
     const playerLoading = document.getElementById('playerLoading');
 
+    // Toast Alert Helper
     function showToast(msg, duration = 3000) {
       const t = document.getElementById('toast');
       t.textContent = msg;
@@ -351,7 +481,288 @@
       setTimeout(() => t.classList.add('opacity-0', 'translate-y-2'), duration);
     }
 
-    // Load Sources from LocalStorage (default empty)
+    // Go Home view
+    function goHome() {
+      currentTid = '';
+      loadSiteHome();
+    }
+
+    // ==============================================================
+    // PWA & Service Worker Support
+    // ==============================================================
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('pwaInstallBtn');
+      if (btn) btn.classList.remove('hidden');
+    });
+
+    document.getElementById('pwaInstallBtn')?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          showToast('已接受安装');
+          document.getElementById('pwaInstallBtn').classList.add('hidden');
+        }
+        deferredPrompt = null;
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.warn('[PWA] SW register:', err));
+      });
+    }
+
+    // ==============================================================
+    // Search History Management
+    // ==============================================================
+    function getSearchHistory() {
+      try {
+        const raw = localStorage.getItem('tvbox_search_history');
+        return raw ? JSON.parse(raw) : [];
+      } catch { return []; }
+    }
+
+    function addSearchHistory(keyword) {
+      if (!keyword) return;
+      let history = getSearchHistory().filter(k => k !== keyword);
+      history.unshift(keyword);
+      if (history.length > 12) history = history.slice(0, 12);
+      localStorage.setItem('tvbox_search_history', JSON.stringify(history));
+      renderSearchHistory();
+    }
+
+    function deleteSearchHistoryItem(keyword, e) {
+      if (e) e.stopPropagation();
+      let history = getSearchHistory().filter(k => k !== keyword);
+      localStorage.setItem('tvbox_search_history', JSON.stringify(history));
+      renderSearchHistory();
+    }
+
+    function clearSearchHistory() {
+      localStorage.removeItem('tvbox_search_history');
+      renderSearchHistory();
+      searchHistoryPopover.classList.add('hidden');
+    }
+
+    function renderSearchHistory() {
+      const history = getSearchHistory();
+      searchHistoryList.innerHTML = '';
+      if (!history.length) {
+        searchHistoryList.innerHTML = '<span class="text-gray-500 text-[11px] py-1">暂无搜索记录</span>';
+        return;
+      }
+      history.forEach(k => {
+        const chip = document.createElement('span');
+        chip.className = 'group inline-flex items-center gap-1.5 px-2.5 py-1 bg-dark-750 hover:bg-dark-700 text-gray-200 hover:text-white rounded-lg cursor-pointer border border-gray-700/60 transition';
+        chip.innerHTML = `
+          <span>${k}</span>
+          <svg class="w-3 h-3 text-gray-500 hover:text-red-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        `;
+        chip.onclick = () => {
+          searchInput.value = k;
+          searchHistoryPopover.classList.add('hidden');
+          performSearch();
+        };
+        chip.querySelector('svg').onclick = (e) => deleteSearchHistoryItem(k, e);
+        searchHistoryList.appendChild(chip);
+      });
+    }
+
+    searchInput.addEventListener('focus', () => {
+      renderSearchHistory();
+      searchHistoryPopover.classList.remove('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      const container = document.getElementById('searchContainer');
+      if (container && !container.contains(e.target)) {
+        searchHistoryPopover.classList.add('hidden');
+      }
+    });
+
+    // ==============================================================
+    // Playback History Management
+    // ==============================================================
+    function getPlayHistory() {
+      try {
+        const raw = localStorage.getItem('tvbox_play_history');
+        return raw ? JSON.parse(raw) : [];
+      } catch { return []; }
+    }
+
+    function savePlayHistory(vod, lineIdx, epIdx, ep, currentTime = 0, duration = 0) {
+      if (!vod) return;
+      let history = getPlayHistory().filter(h => h.vodId !== vod.vod_id);
+      const record = {
+        vodId: vod.vod_id,
+        vodName: vod.vod_name,
+        vodPic: vod.vod_pic,
+        siteKey: currentSite?.key,
+        siteName: currentSite?.name,
+        lineIndex: lineIdx,
+        lineName: parsedLines[lineIdx]?.name || '默认线路',
+        epIndex: epIdx,
+        epName: ep?.name || '第1集',
+        epId: ep?.id || '',
+        currentTime: currentTime,
+        duration: duration,
+        updatedAt: Date.now()
+      };
+      history.unshift(record);
+      if (history.length > 40) history = history.slice(0, 40);
+      localStorage.setItem('tvbox_play_history', JSON.stringify(history));
+      updateHistoryBadge();
+    }
+
+    function updatePlayHistoryTime(vodId, currentTime, duration) {
+      if (!vodId) return;
+      let history = getPlayHistory();
+      const idx = history.findIndex(h => h.vodId === vodId);
+      if (idx !== -1) {
+        history[idx].currentTime = Math.floor(currentTime);
+        history[idx].duration = Math.floor(duration);
+        history[idx].updatedAt = Date.now();
+        localStorage.setItem('tvbox_play_history', JSON.stringify(history));
+      }
+    }
+
+    function updateHistoryBadge() {
+      const history = getPlayHistory();
+      const badge = document.getElementById('historyBadge');
+      if (badge) {
+        if (history.length > 0) {
+          badge.textContent = history.length;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+      const countEl = document.getElementById('drawerHistoryCount');
+      if (countEl) countEl.textContent = `(${history.length})`;
+    }
+
+    function openHistoryDrawer() {
+      renderHistoryDrawer();
+      const backdrop = document.getElementById('historyDrawerBackdrop');
+      const drawer = document.getElementById('historyDrawer');
+      backdrop.classList.remove('hidden');
+      setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+      drawer.classList.remove('translate-x-full');
+    }
+
+    function closeHistoryDrawer() {
+      const backdrop = document.getElementById('historyDrawerBackdrop');
+      const drawer = document.getElementById('historyDrawer');
+      backdrop.classList.add('opacity-0');
+      drawer.classList.add('translate-x-full');
+      setTimeout(() => backdrop.classList.add('hidden'), 300);
+    }
+
+    function clearAllHistory() {
+      localStorage.removeItem('tvbox_play_history');
+      renderHistoryDrawer();
+      updateHistoryBadge();
+      showToast('已清空全部播放历史');
+    }
+
+    function deleteHistoryItem(vodId, e) {
+      if (e) e.stopPropagation();
+      let history = getPlayHistory().filter(h => h.vodId !== vodId);
+      localStorage.setItem('tvbox_play_history', JSON.stringify(history));
+      renderHistoryDrawer();
+      updateHistoryBadge();
+    }
+
+    function formatTimeStr(sec) {
+      if (!sec || isNaN(sec)) return '00:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function renderHistoryDrawer() {
+      const list = document.getElementById('historyDrawerList');
+      const history = getPlayHistory();
+      list.innerHTML = '';
+      if (!history.length) {
+        list.innerHTML = `
+          <div class="py-20 text-center text-gray-500 text-xs">
+            <svg class="w-10 h-10 mx-auto text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            暂无播放历史记录
+          </div>
+        `;
+        return;
+      }
+
+      history.forEach(item => {
+        const percent = (item.duration > 0) ? Math.min(100, Math.round((item.currentTime / item.duration) * 100)) : 0;
+        const div = document.createElement('div');
+        div.className = 'pt-2.5 first:pt-0 group flex items-start gap-3 p-2 rounded-xl hover:bg-dark-750 cursor-pointer transition';
+        div.innerHTML = `
+          <div class="relative w-16 h-22 flex-shrink-0 bg-dark-700 rounded-lg overflow-hidden border border-gray-700/60">
+            <img src="${item.vodPic || ''}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/120x160/1f2937/9ca3af?text=Pic'">
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-800">
+              <div class="h-full bg-indigo-500" style="width: ${percent}%;"></div>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <h4 class="text-xs font-semibold text-gray-100 group-hover:text-indigo-400 transition truncate">${item.vodName}</h4>
+                <button class="delete-btn text-gray-500 hover:text-red-400 p-1" title="删除记录">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <p class="text-[11px] text-indigo-300 truncate mt-0.5">${item.epName} (${item.lineName})</p>
+              <p class="text-[10px] text-gray-500 mt-0.5 truncate">${item.siteName || ''}</p>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-gray-400 mt-2">
+              <span>进度: ${percent}% (${formatTimeStr(item.currentTime)}/${formatTimeStr(item.duration)})</span>
+              <span class="text-indigo-400 font-medium">继续播放 →</span>
+            </div>
+          </div>
+        `;
+
+        div.onclick = () => {
+          closeHistoryDrawer();
+          resumeFromHistory(item);
+        };
+        div.querySelector('.delete-btn').onclick = (e) => deleteHistoryItem(item.vodId, e);
+        list.appendChild(div);
+      });
+    }
+
+    async function resumeFromHistory(item) {
+      if (!item) return;
+      // Match site if possible
+      const sites = currentConfig?.video?.sites || currentConfig?.sites || [];
+      const targetSite = sites.find(s => s.key === item.siteKey || s.name === item.siteName);
+      if (targetSite) {
+        currentSite = targetSite;
+        siteSelect.value = sites.indexOf(targetSite);
+      }
+      await openDetail(item.vodId, item);
+    }
+
+    // Throttled video progress saver
+    let lastHistorySaveTime = 0;
+    videoElement.addEventListener('timeupdate', () => {
+      const now = Date.now();
+      if (now - lastHistorySaveTime > 4000 && currentDetail) {
+        lastHistorySaveTime = now;
+        updatePlayHistoryTime(currentDetail.vod_id, videoElement.currentTime, videoElement.duration);
+      }
+    });
+
+    document.getElementById('openHistoryBtn')?.addEventListener('click', openHistoryDrawer);
+
+    // ==============================================================
+    // Source Manager (Local Storage)
+    // ==============================================================
     function loadSavedSources() {
       try {
         const raw = localStorage.getItem('tvbox_user_sources');
@@ -383,7 +794,6 @@
       }
     }
 
-    // Dropdown Operations
     function toggleSourceDropdown(e) {
       if (e) e.stopPropagation();
       if (!userSources.length) {
@@ -392,11 +802,7 @@
         return;
       }
       const isHidden = sourceDropdownMenu.classList.contains('hidden');
-      if (isHidden) {
-        openSourceDropdown();
-      } else {
-        closeSourceDropdown();
-      }
+      if (isHidden) openSourceDropdown(); else closeSourceDropdown();
     }
 
     function openSourceDropdown() {
@@ -418,7 +824,7 @@
         const isActive = idx === activeSourceIndex;
         const btn = document.createElement('button');
         btn.className = `w-full flex items-center justify-between px-3 py-2 text-left text-xs rounded-lg transition ${
-          isActive ? 'bg-indigo-950/60 text-indigo-300 font-medium' : 'text-gray-300 hover:bg-dark-700 hover:text-white'
+          isActive ? 'bg-indigo-950/70 text-indigo-300 font-semibold border-l-2 border-indigo-400' : 'text-gray-300 hover:bg-dark-700 hover:text-white'
         }`;
 
         const isNode = src.url.includes('.js.md5');
@@ -441,12 +847,10 @@
           selectSource(idx);
           closeSourceDropdown();
         };
-
         dropdownSourcesList.appendChild(btn);
       });
     }
 
-    // Modal Operations
     function openSourceModal() {
       renderSourcesList();
       sourceModal.classList.remove('hidden');
@@ -459,7 +863,7 @@
     function renderSourcesList() {
       sourcesList.innerHTML = '';
       if (!userSources.length) {
-        sourcesList.innerHTML = '<p class="text-xs text-gray-500 py-3 text-center">暂未保存任何配置源，请在上方添加</p>';
+        sourcesList.innerHTML = '<p class="text-xs text-gray-500 py-3 text-center">暂未保存任何配置源，请在上方输入添加</p>';
         return;
       }
 
@@ -467,7 +871,6 @@
         const isActive = idx === activeSourceIndex;
         const item = document.createElement('div');
         item.className = `p-3 rounded-xl border flex items-center justify-between gap-3 transition ${isActive ? 'bg-indigo-950/40 border-indigo-500/70' : 'bg-dark-700/60 border-gray-700 hover:border-gray-600'}`;
-        
         item.innerHTML = `
           <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
             <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isActive ? 'border-indigo-500 bg-indigo-500' : 'border-gray-500'}">
@@ -502,7 +905,7 @@
       const rawUrl = newSourceUrl.value.trim();
       if (!rawUrl) return showToast('请输入源地址 URL');
 
-      const finalName = name || (rawUrl.includes('.js.md5') ? 'CatVod Node 聚合源' : '自定义 TVBox 源');
+      const finalName = name || (rawUrl.includes('.js.md5') ? 'CatVod Node 源' : 'TVBox 订阅源');
       userSources.push({ name: finalName, url: rawUrl });
       activeSourceIndex = userSources.length - 1;
       saveSources();
@@ -514,8 +917,6 @@
       showToast(`已添加并切换至: ${finalName}`);
       loadActiveSource();
     }
-
-    
 
     function selectSource(idx) {
       if (idx === activeSourceIndex) return;
@@ -529,9 +930,7 @@
 
     function deleteSource(idx) {
       userSources.splice(idx, 1);
-      if (activeSourceIndex >= userSources.length) {
-        activeSourceIndex = userSources.length - 1;
-      }
+      if (activeSourceIndex >= userSources.length) activeSourceIndex = userSources.length - 1;
       saveSources();
       renderSourcesList();
       if (userSources.length === 0 || activeSourceIndex === -1) {
@@ -549,7 +948,19 @@
       siteErrorCard.classList.add('hidden');
     }
 
-    // Load active source
+    // Helper to resolve spider route dynamically across Node and Android backends
+    function getSpiderApiUrl(action) {
+      if (!currentSite) return '';
+      if (currentSite.api && currentSite.api.startsWith('/spider/')) {
+        return `/api${currentSite.api}/${action}`;
+      } else {
+        return `/api/spider/${encodeURIComponent(currentSite.key || currentSite.name)}/${action}`;
+      }
+    }
+
+    // ==============================================================
+    // Active Source & Site Loading
+    // ==============================================================
     async function loadActiveSource() {
       if (activeSourceIndex < 0 || activeSourceIndex >= userSources.length) {
         showNoSourceUI();
@@ -565,7 +976,7 @@
 
       try {
         if (src.url.includes('.js.md5')) {
-          // Case 1: Node bundle source -> load from local Fastify backend (Windows环境)
+          // Node bundle source
           const res = await fetch('/api/config');
           if (!res.ok) throw new Error('无法连接后台配置服务');
           currentConfig = await res.json();
@@ -575,7 +986,7 @@
           }
           renderSitesDropdown(sites);
         } else {
-          // Case 2: External JSON source (e.g. user subscribed json) -> fetch through gateway/android proxy
+          // External JSON source -> fetch through gateway/android proxy
           const res = await fetch(`/api/fetch_source?url=${encodeURIComponent(src.url)}`);
           if (!res.ok) throw new Error(`获取 JSON 源失败 (HTTP ${res.status})`);
           currentConfig = await res.json();
@@ -604,7 +1015,7 @@
         siteSelect.appendChild(opt);
       });
 
-      // Default to 瓜子秒播 or 独播秒播 if available, otherwise first site
+      // Default to 瓜子秒播 or 独播秒播 if available
       let preferredIdx = sites.findIndex(s => s.name.includes('瓜子') || s.name.includes('独播'));
       if (preferredIdx === -1) preferredIdx = 0;
       siteSelect.value = preferredIdx;
@@ -613,16 +1024,27 @@
       loadSiteHome();
     }
 
-    // Helper to resolve spider route dynamically across Node and Android backends
-    function getSpiderApiUrl(action) {
-      if (!currentSite) return '';
-      if (currentSite.api && currentSite.api.startsWith('/spider/')) {
-        return `/api${currentSite.api}/${action}`;
-      } else {
-        return `/api/spider/${encodeURIComponent(currentSite.key)}/${action}`;
+    // Safe JSON Fetch Helper to prevent "Unexpected end of JSON input"
+    async function safeFetchJson(url, postData = {}) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(postData)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      if (!text || !text.trim()) {
+        return { list: [], class: [] };
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.warn('[Fetch] Non-JSON payload received:', text.slice(0, 100));
+        return { list: [], class: [], rawText: text };
       }
     }
-    // Load Home Videos (with auto-init to probe live mirrors)
+
+    // Load Home Videos
     async function loadSiteHome() {
       if (!currentSite) return;
       setLoading(true);
@@ -631,8 +1053,7 @@
       currentTid = '';
 
       try {
-
-        // 1. Automatically call /init to discover live mirror URLs (e.g. wogg.live)
+        // 1. Auto init to probe mirrors
         try {
           await fetch(getSpiderApiUrl('init'), {
             method: 'POST',
@@ -640,21 +1061,11 @@
             body: JSON.stringify({})
           });
         } catch (initErr) {
-          console.warn('[Spider] Init warning:', initErr);
+          console.warn('[Spider] Init note:', initErr);
         }
 
         // 2. Fetch Home video list
-        const res = await fetch(getSpiderApiUrl('home'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-
-        if (!res.ok) {
-          throw new Error(`HTTP_${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = await safeFetchJson(getSpiderApiUrl('home'), {});
         if (data.error && (!data.list || data.list.length === 0)) {
           throw new Error(data.error);
         }
@@ -668,18 +1079,17 @@
       }
     }
 
-    // Site error handler with clear suggestions
     function handleSiteError(err) {
       siteErrorCard.classList.remove('hidden');
       const errCodeSpan = document.getElementById('siteErrorCode');
       const errMsgP = document.getElementById('siteErrorMessage');
 
       if (err.message.includes('HTTP_500')) {
-        errCodeSpan.textContent = 'HTTP 500 (网盘/目标站超时)';
-        errMsgP.textContent = `站点「${currentSite?.name}」底层目标服务器连接超时或证书异常（如玩偶4K旧镜像失效）。该类站点通常需要网盘转存授权。建议直接切换至右侧已测通的高可用秒播站点。`;
+        errCodeSpan.textContent = 'HTTP 500 (源站超时)';
+        errMsgP.textContent = `站点「${currentSite?.name}」底层服务器超时或防盗链阻断。建议切换到高可用秒播站点。`;
       } else {
-        errCodeSpan.textContent = err.message;
-        errMsgP.textContent = `站点「${currentSite?.name}」请求失败，请尝试切换其他线路或站点。`;
+        errCodeSpan.textContent = err.message || '请求失败';
+        errMsgP.textContent = `站点「${currentSite?.name}」加载异常（${err.message}），请切换其他线路或在右上角更换配置源。`;
       }
     }
 
@@ -696,7 +1106,7 @@
           });
           return;
         } else {
-          showToast('请在配置源管理中选择或添加 Node 跨平台源');
+          showToast('请在配置源管理中选择或添加可用源');
           openSourceModal();
           return;
         }
@@ -718,11 +1128,11 @@
       }
     }
 
-    // Category
+    // Category Tabs
     function renderCategoryBar() {
       categoryBar.innerHTML = '';
       const homeBtn = document.createElement('button');
-      homeBtn.className = `cat-pill px-3.5 py-1 rounded-full text-xs font-medium transition ${currentTid === '' ? 'bg-indigo-600 text-white' : 'bg-dark-800 hover:bg-dark-700 text-gray-300'}`;
+      homeBtn.className = `cat-pill px-3.5 py-1 rounded-full text-xs font-medium transition ${currentTid === '' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 hover:bg-dark-700 text-gray-300'}`;
       homeBtn.textContent = '推荐首页';
       homeBtn.onclick = () => {
         currentTid = '';
@@ -732,7 +1142,7 @@
 
       currentClasses.forEach(c => {
         const btn = document.createElement('button');
-        btn.className = `cat-pill px-3.5 py-1 rounded-full text-xs font-medium transition ${currentTid === c.type_id ? 'bg-indigo-600 text-white' : 'bg-dark-800 hover:bg-dark-700 text-gray-300'}`;
+        btn.className = `cat-pill px-3.5 py-1 rounded-full text-xs font-medium transition ${currentTid === c.type_id ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 hover:bg-dark-700 text-gray-300'}`;
         btn.textContent = c.type_name;
         btn.onclick = () => loadCategory(c.type_id);
         categoryBar.appendChild(btn);
@@ -748,13 +1158,7 @@
       videoGrid.innerHTML = '';
 
       try {
-        const res = await fetch(getSpiderApiUrl('category'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tid, pg: 1 })
-        });
-        if (!res.ok) throw new Error(`HTTP_${res.status}`);
-        const data = await res.json();
+        const data = await safeFetchJson(getSpiderApiUrl('category'), { tid, pg: 1 });
         renderVideoCards(data.list || []);
       } catch (err) {
         handleSiteError(err);
@@ -769,18 +1173,14 @@
       if (!wd) return showToast('请输入搜索关键词');
       if (!currentSite) return;
 
+      addSearchHistory(wd);
+      searchHistoryPopover.classList.add('hidden');
       setLoading(true);
       siteErrorCard.classList.add('hidden');
       videoGrid.innerHTML = '';
 
       try {
-        const res = await fetch(getSpiderApiUrl('search'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ wd, pg: 1 })
-        });
-        if (!res.ok) throw new Error(`HTTP_${res.status}`);
-        const data = await res.json();
+        const data = await safeFetchJson(getSpiderApiUrl('search'), { wd, pg: 1 });
         renderVideoCards(data.list || []);
       } catch (err) {
         handleSiteError(err);
@@ -800,15 +1200,15 @@
 
       items.forEach(item => {
         const card = document.createElement('div');
-        card.className = 'group relative flex flex-col bg-dark-800 rounded-xl overflow-hidden border border-gray-800/80 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer transform hover:-translate-y-1';
+        card.className = 'group relative flex flex-col bg-dark-800 rounded-xl overflow-hidden border border-gray-800/80 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer transform hover:-translate-y-1';
         
         const pic = item.vod_pic || '';
         const remarks = item.vod_remarks || '';
 
         card.innerHTML = `
-          <div class="relative w-full pb-[140%] bg-dark-700 overflow-hidden">
+          <div class="relative w-full pb-[142%] bg-dark-750 overflow-hidden">
             <img src="${pic}" alt="${item.vod_name}" loading="lazy" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/300x420/1f2937/9ca3af?text=No+Poster'">
-            <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-80 group-hover:opacity-60 transition"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-85 group-hover:opacity-60 transition"></div>
             ${remarks ? `<span class="absolute top-2 right-2 bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow">${remarks}</span>` : ''}
             <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <div class="w-12 h-12 rounded-full bg-indigo-600/90 text-white flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition">
@@ -816,7 +1216,7 @@
               </div>
             </div>
           </div>
-          <div class="p-3 flex-1 flex flex-col justify-between">
+          <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between">
             <h3 class="text-xs sm:text-sm font-semibold text-gray-200 group-hover:text-indigo-400 transition truncate" title="${item.vod_name}">${item.vod_name}</h3>
             <span class="text-[11px] text-gray-500 mt-1 truncate">${item.vod_actor || item.type_name || ''}</span>
           </div>
@@ -827,8 +1227,10 @@
       });
     }
 
-    // Detail & Play
-    async function openDetail(vodId) {
+    // ==============================================================
+    // Video Detail & Playback Engine (Enhanced UX)
+    // ==============================================================
+    async function openDetail(vodId, historyResumeRecord = null) {
       if (!currentSite) return;
       playerModal.classList.remove('hidden');
       document.getElementById('modalVodName').textContent = '加载详情中...';
@@ -836,19 +1238,16 @@
       document.getElementById('modalVodRemarks').textContent = '';
       document.getElementById('modalVodYear').textContent = '';
       document.getElementById('modalVodArea').textContent = '';
+      document.getElementById('modalVodCurrentPlaying').classList.add('hidden');
       document.getElementById('lineTabs').innerHTML = '';
       document.getElementById('episodesGrid').innerHTML = '';
       document.getElementById('episodesCount').textContent = '0';
+      document.getElementById('descToggleBtn').classList.add('hidden');
+      document.getElementById('resumePlayBanner').classList.add('hidden');
       playerLoading.classList.remove('hidden');
 
       try {
-        const res = await fetch(getSpiderApiUrl('detail'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: vodId })
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = await safeFetchJson(getSpiderApiUrl('detail'), { id: vodId });
         const list = data.list || [];
         if (!list.length) throw new Error('未获取到有效影片详情');
         
@@ -857,7 +1256,20 @@
         document.getElementById('modalVodRemarks').textContent = currentDetail.vod_remarks || '';
         document.getElementById('modalVodYear').textContent = currentDetail.vod_year ? `${currentDetail.vod_year}年` : '';
         document.getElementById('modalVodArea').textContent = currentDetail.vod_area || '';
-        document.getElementById('modalVodContent').textContent = currentDetail.vod_content || '暂无简介';
+        
+        // Render description with Show More toggle
+        const contentP = document.getElementById('modalVodContent');
+        const rawContent = (currentDetail.vod_content || '暂无详细简介').trim();
+        contentP.textContent = rawContent;
+        isDescriptionExpanded = false;
+        contentP.classList.add('line-clamp-2');
+        
+        if (rawContent.length > 75) {
+          const toggleBtn = document.getElementById('descToggleBtn');
+          toggleBtn.classList.remove('hidden');
+          document.getElementById('descToggleText').textContent = '查看完整简介';
+          document.getElementById('descToggleIcon').classList.remove('rotate-180');
+        }
 
         // Check if playable lines exist
         if (!currentDetail.vod_play_url || !currentDetail.vod_play_from) {
@@ -867,13 +1279,8 @@
             <div class="col-span-full py-8 text-center text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4">
               <p class="font-medium text-amber-300">⚠️ 未获取到可播放的有效剧集线路</p>
               <p class="text-[11px] text-gray-400 mt-1.5 leading-relaxed max-w-md mx-auto">
-                原因通常为：该片源在网盘上的分享链接已被原作者删除/取消，或该片源仅存在于您尚未登录绑定的网盘（如阿里云盘、115网盘等）。
+                可能由于资源链接已失效，或仅存在于未配置的网盘（如阿里云盘）。可在右上角前往网盘配置。
               </p>
-              <div class="mt-3 flex justify-center gap-2">
-                <a href="/website" target="_blank" class="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-xs font-medium transition shadow-sm">
-                  ⚙️ 前往网盘配置中心绑定更多网盘
-                </a>
-              </div>
             </div>
           `;
           playerLoading.classList.add('hidden');
@@ -895,12 +1302,40 @@
           return { name, eps };
         });
 
-        currentLineIndex = 0;
+        // Determine resume episode from history
+        let resumeEpIdx = 0;
+        let resumeLineIdx = 0;
+        let resumeTime = 0;
+
+        const savedHistory = historyResumeRecord || getPlayHistory().find(h => h.vodId === currentDetail.vod_id);
+        if (savedHistory) {
+          if (savedHistory.lineIndex < parsedLines.length) resumeLineIdx = savedHistory.lineIndex;
+          if (savedHistory.epIndex < (parsedLines[resumeLineIdx]?.eps?.length || 0)) resumeEpIdx = savedHistory.epIndex;
+          resumeTime = savedHistory.currentTime || 0;
+
+          // Show banner
+          const banner = document.getElementById('resumePlayBanner');
+          const bannerText = document.getElementById('resumePlayText');
+          const bannerBtn = document.getElementById('resumePlayBtn');
+          bannerText.textContent = `上次播放到：${savedHistory.epName} (${formatTimeStr(resumeTime)} / ${formatTimeStr(savedHistory.duration)})`;
+          bannerBtn.onclick = () => {
+            banner.classList.add('hidden');
+            selectEpisode(resumeEpIdx, resumeTime);
+          };
+          banner.classList.remove('hidden');
+        }
+
+        currentLineIndex = resumeLineIdx;
+        currentEpIndex = resumeEpIdx;
+        const targetEp = parsedLines[currentLineIndex]?.eps?.[currentEpIndex] || parsedLines[0]?.eps?.[0];
+        currentEpId = targetEp?.id || '';
+        currentEpName = targetEp?.name || '';
+
         renderLineTabs();
         renderEpisodes();
 
-        if (parsedLines[0]?.eps?.length) {
-          playEpisode(parsedLines[0].eps[0]);
+        if (targetEp) {
+          playEpisode(targetEp, currentEpIndex, resumeTime);
         } else {
           playerLoading.classList.add('hidden');
         }
@@ -910,43 +1345,113 @@
       }
     }
 
+    // Toggle description expand / collapse
+    function toggleDescription() {
+      const contentP = document.getElementById('modalVodContent');
+      const toggleText = document.getElementById('descToggleText');
+      const toggleIcon = document.getElementById('descToggleIcon');
+      isDescriptionExpanded = !isDescriptionExpanded;
+
+      if (isDescriptionExpanded) {
+        contentP.classList.remove('line-clamp-2');
+        toggleText.textContent = '收起简介';
+        toggleIcon.classList.add('rotate-180');
+      } else {
+        contentP.classList.add('line-clamp-2');
+        toggleText.textContent = '查看完整简介';
+        toggleIcon.classList.remove('rotate-180');
+      }
+    }
+
+    // Toggle Episode Layout (4 columns wide vs compact multi-column)
+    function toggleEpisodeGridLayout() {
+      episodeLayoutWide = !episodeLayoutWide;
+      renderEpisodes();
+    }
+
     function renderLineTabs() {
       const container = document.getElementById('lineTabs');
       container.innerHTML = '';
       parsedLines.forEach((line, idx) => {
         const btn = document.createElement('button');
-        btn.className = `px-3 py-1 rounded-lg text-xs font-medium transition ${idx === currentLineIndex ? 'bg-indigo-600 text-white' : 'bg-dark-700 hover:bg-dark-600 text-gray-300'}`;
+        btn.className = `px-3 py-1 rounded-lg text-xs font-medium transition ${idx === currentLineIndex ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 hover:bg-dark-700 text-gray-300'}`;
         btn.textContent = line.name;
         btn.onclick = () => {
           currentLineIndex = idx;
+          currentEpIndex = 0;
           renderLineTabs();
           renderEpisodes();
+          const firstEp = parsedLines[currentLineIndex]?.eps?.[0];
+          if (firstEp) selectEpisode(0);
         };
         container.appendChild(btn);
       });
     }
 
+    // Render Episodes with Active Highlight & Smart Responsive Width (Max 4 per row for long titles)
     function renderEpisodes() {
       const container = document.getElementById('episodesGrid');
       container.innerHTML = '';
       const eps = parsedLines[currentLineIndex]?.eps || [];
       document.getElementById('episodesCount').textContent = eps.length;
 
-      eps.forEach(ep => {
+      // Smart check if titles are long (such as filename [3.5GB]Fall.2.2026.1080p...)
+      const maxLen = eps.reduce((m, e) => Math.max(m, (e.name || '').length), 0);
+      const isLongTitle = maxLen > 9;
+
+      const layoutBtnText = document.getElementById('gridLayoutText');
+
+      if (episodeLayoutWide || isLongTitle) {
+        // Enforce MAX 4 TITLES PER ROW (一行最多4个标题，增加显示宽度)
+        container.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto pr-1';
+        layoutBtnText.textContent = '当前: 4列宽幅';
+      } else {
+        // Compact mode for short numbers like "01", "02"
+        container.className = 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-60 overflow-y-auto pr-1';
+        layoutBtnText.textContent = '当前: 紧凑模式';
+      }
+
+      eps.forEach((ep, idx) => {
+        const isActive = (idx === currentEpIndex) || (ep.id === currentEpId);
         const btn = document.createElement('button');
-        btn.className = 'ep-btn px-2.5 py-1.5 bg-dark-700 hover:bg-dark-600 border border-gray-700 rounded-lg text-xs text-gray-200 font-medium transition truncate text-center';
-        btn.textContent = ep.name;
+        btn.className = `ep-btn relative px-3 py-2 rounded-xl text-xs transition duration-200 text-left border flex items-center justify-between gap-1.5 ${
+          isActive
+            ? 'border-indigo-500 bg-indigo-950/80 text-indigo-300 font-bold ring-2 ring-indigo-500/40 shadow-md'
+            : 'bg-dark-750 hover:bg-dark-700 border-gray-700/80 text-gray-200'
+        }`;
         btn.title = ep.name;
-        btn.onclick = () => {
-          container.querySelectorAll('.ep-btn').forEach(b => b.classList.remove('border-indigo-500', 'text-indigo-400', 'bg-indigo-950/40'));
-          btn.classList.add('border-indigo-500', 'text-indigo-400', 'bg-indigo-950/40');
-          playEpisode(ep);
-        };
+
+        btn.innerHTML = `
+          <div class="flex items-center gap-1.5 min-w-0 flex-1">
+            ${isActive ? '<span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse flex-shrink-0"></span>' : ''}
+            <span class="truncate ${isLongTitle ? 'line-clamp-2' : ''}">${ep.name}</span>
+          </div>
+          ${isActive ? '<span class="text-[9px] bg-indigo-500 text-white px-1.5 py-0.2 rounded font-mono font-normal flex-shrink-0">播放中</span>' : ''}
+        `;
+
+        btn.onclick = () => selectEpisode(idx);
         container.appendChild(btn);
       });
     }
 
-    async function playEpisode(ep) {
+    function selectEpisode(idx, startSeekTime = 0) {
+      const eps = parsedLines[currentLineIndex]?.eps || [];
+      if (!eps[idx]) return;
+      currentEpIndex = idx;
+      currentEpId = eps[idx].id;
+      currentEpName = eps[idx].name;
+
+      // Update badge
+      const playingBadge = document.getElementById('modalVodCurrentPlaying');
+      const playingLabel = document.getElementById('currentPlayingLabel');
+      playingBadge.classList.remove('hidden');
+      playingLabel.textContent = `播放中: ${currentEpName}`;
+
+      renderEpisodes();
+      playEpisode(eps[idx], idx, startSeekTime);
+    }
+
+    async function playEpisode(ep, idx = 0, startSeekTime = 0) {
       playerLoading.classList.remove('hidden');
       if (hlsInstance) {
         hlsInstance.destroy();
@@ -955,45 +1460,52 @@
       videoElement.pause();
       videoElement.src = '';
 
+      currentEpId = ep.id;
+      currentEpName = ep.name;
+      currentEpIndex = idx;
+
+      // Save to history initially
+      savePlayHistory(currentDetail, currentLineIndex, currentEpIndex, ep, startSeekTime, 0);
+
       try {
         const currentFlag = parsedLines[currentLineIndex]?.name || '';
-        const res = await fetch(getSpiderApiUrl('play'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ flag: currentFlag, id: ep.id })
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const playData = await res.json();
+        const playData = await safeFetchJson(getSpiderApiUrl('play'), { flag: currentFlag, id: ep.id });
         
         let playUrl = playData.url;
-        if (!playUrl) throw new Error('解析未返回播放地址');
+        if (!playUrl) throw new Error('解析未返回有效播放直链');
 
         const customHeaders = JSON.stringify(playData.header || {});
         const proxyStreamUrl = `/api/stream?url=${encodeURIComponent(playUrl)}&headers=${encodeURIComponent(customHeaders)}`;
+
+        console.log('[Player] Playing stream:', proxyStreamUrl);
+
+        const onCanPlay = () => {
+          playerLoading.classList.add('hidden');
+          if (startSeekTime > 0) {
+            videoElement.currentTime = startSeekTime;
+          }
+          videoElement.play().catch(e => console.warn('Autoplay prevented:', e));
+        };
 
         if (playUrl.includes('.m3u8') || playData.format === 'application/vnd.apple.mpegurl') {
           if (Hls.isSupported()) {
             hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true });
             hlsInstance.loadSource(proxyStreamUrl);
             hlsInstance.attachMedia(videoElement);
-            hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-              videoElement.play().catch(e => console.warn('Autoplay prevented:', e));
-              playerLoading.classList.add('hidden');
-            });
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, onCanPlay);
             hlsInstance.on(Hls.Events.ERROR, (event, data) => {
               if (data.fatal) {
-                showToast('播放错误: 视频切片加载失败');
+                showToast('播放错误: 视频切片加载中断');
                 playerLoading.classList.add('hidden');
               }
             });
           } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
             videoElement.src = proxyStreamUrl;
-            videoElement.play();
-            playerLoading.classList.add('hidden');
+            videoElement.addEventListener('loadedmetadata', onCanPlay, { once: true });
           }
         } else {
           videoElement.src = proxyStreamUrl;
-          videoElement.play().then(() => playerLoading.classList.add('hidden')).catch(() => playerLoading.classList.add('hidden'));
+          videoElement.addEventListener('canplay', onCanPlay, { once: true });
         }
       } catch (err) {
         showToast('解析播放失败: ' + err.message);
@@ -1001,7 +1513,48 @@
       }
     }
 
-    closeModalBtn.onclick = () => {
+    // ==============================================================
+    // Web Fullscreen / Theater Mode
+    // ==============================================================
+    function toggleWebFullscreen() {
+      isWebFullscreen = !isWebFullscreen;
+      const card = document.getElementById('playerCard');
+      const text = document.getElementById('webFullscreenText');
+      const icon = document.getElementById('webFullscreenIcon');
+      const viewport = document.getElementById('playerViewport');
+
+      if (isWebFullscreen) {
+        document.body.classList.add('is-web-fullscreen');
+        playerModal.classList.add('p-0');
+        card.classList.add('modal-web-fullscreen');
+        viewport.classList.remove('aspect-video');
+        viewport.classList.add('h-[65vh]', 'lg:h-[72vh]');
+        text.textContent = '退出全屏';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>';
+        showToast('已进入网页全屏 (按 Esc 或 W 退出)');
+      } else {
+        exitWebFullscreen();
+      }
+    }
+
+    function exitWebFullscreen() {
+      isWebFullscreen = false;
+      document.body.classList.remove('is-web-fullscreen');
+      playerModal.classList.remove('p-0');
+      const card = document.getElementById('playerCard');
+      const text = document.getElementById('webFullscreenText');
+      const icon = document.getElementById('webFullscreenIcon');
+      const viewport = document.getElementById('playerViewport');
+
+      card.classList.remove('modal-web-fullscreen');
+      viewport.classList.add('aspect-video');
+      viewport.classList.remove('h-[65vh]', 'lg:h-[72vh]');
+      text.textContent = '网页全屏';
+      icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>';
+    }
+
+    function closePlayerModal() {
+      if (isWebFullscreen) exitWebFullscreen();
       playerModal.classList.add('hidden');
       if (hlsInstance) {
         hlsInstance.destroy();
@@ -1009,8 +1562,25 @@
       }
       videoElement.pause();
       videoElement.src = '';
-    };
+    }
 
+    // Keyboard Shortcuts (Esc / W)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!playerModal.classList.contains('hidden')) {
+          if (isWebFullscreen) exitWebFullscreen(); else closePlayerModal();
+        }
+        closeSourceDropdown();
+        closeHistoryDrawer();
+      } else if ((e.key === 'w' || e.key === 'W') && !playerModal.classList.contains('hidden')) {
+        // Toggle web fullscreen with 'W' key
+        if (document.activeElement.tagName !== 'INPUT') {
+          toggleWebFullscreen();
+        }
+      }
+    });
+
+    // Helper UI toggles
     function setLoading(isLoading) {
       if (isLoading) {
         loadingIndicator.classList.remove('hidden');
@@ -1041,7 +1611,6 @@
     openSourcesBtn.onclick = openSourceModal;
     sourceDropdownBtn.onclick = toggleSourceDropdown;
 
-    // Close dropdown on click outside or Esc
     document.addEventListener('click', (e) => {
       const container = document.getElementById('sourceDropdownContainer');
       if (container && !container.contains(e.target)) {
@@ -1049,14 +1618,9 @@
       }
     });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closeSourceDropdown();
-      }
-    });
-
     // Bootstrap
     loadSavedSources();
+    updateHistoryBadge();
     if (userSources.length > 0 && activeSourceIndex >= 0) {
       loadActiveSource();
     } else {

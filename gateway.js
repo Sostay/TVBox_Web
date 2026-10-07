@@ -289,15 +289,38 @@ const server = http.createServer((req, res) => {
     return forwardToBackend(req, res, pathname);
   }
 
-  // Static web frontend
-  if (pathname === '/' || pathname === '/index.html') {
-    const indexPath = path.join(__dirname, 'public', 'index.html');
-    fs.readFile(indexPath, 'utf-8', (err, content) => {
+  // Static web frontend & PWA assets
+  const staticFileMap = {
+    '/': 'index.html',
+    '/index.html': 'index.html',
+    '/manifest.webmanifest': 'manifest.webmanifest',
+    '/manifest.json': 'manifest.webmanifest',
+    '/sw.js': 'sw.js',
+    '/icon-192.png': 'icon-192.png',
+    '/icon-512.png': 'icon-512.png',
+    '/favicon.ico': 'favicon.ico'
+  };
+
+  if (staticFileMap[pathname]) {
+    const filePath = path.join(__dirname, 'public', staticFileMap[pathname]);
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes = {
+      '.html': 'text/html; charset=utf-8',
+      '.webmanifest': 'application/manifest+json; charset=utf-8',
+      '.json': 'application/json; charset=utf-8',
+      '.js': 'application/javascript; charset=utf-8',
+      '.png': 'image/png',
+      '.ico': 'image/x-icon'
+    };
+    fs.readFile(filePath, (err, content) => {
       if (err) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        return res.end('Error loading frontend index.html: ' + err.message);
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        return res.end('File not found: ' + pathname);
       }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, {
+        'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+        'Access-Control-Allow-Origin': '*'
+      });
       res.end(content);
     });
     return;
