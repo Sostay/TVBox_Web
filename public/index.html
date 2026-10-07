@@ -1257,7 +1257,7 @@
       }
     }
 
-    // Render Search Results Grouped by Source (按源分类显示搜索结果)
+    // Render Search Results (并列平铺展示 + 顶部源标签自动换行)
     function renderGroupedSearchResults(wd, groupedResults, activeFilterSiteKey = null) {
       videoGrid.innerHTML = '';
       emptyNotice.classList.add('hidden');
@@ -1273,11 +1273,11 @@
 
       // Wrapper container spanning full width
       const wrapper = document.createElement('div');
-      wrapper.className = 'col-span-full space-y-6';
+      wrapper.className = 'col-span-full space-y-5';
 
-      // 1. Search Result Header Summary & Source Filter Tabs
+      // 1. Search Result Header Summary & Wrapped Source Filter Chips
       const headerBar = document.createElement('div');
-      headerBar.className = 'p-4 bg-dark-800 rounded-2xl border border-gray-800 shadow-md space-y-3';
+      headerBar.className = 'p-3.5 sm:p-4 bg-dark-800 rounded-2xl border border-gray-800 shadow-md space-y-3';
       
       let tabsHtml = `
         <div class="flex items-center justify-between flex-wrap gap-2">
@@ -1286,12 +1286,13 @@
             <span class="text-xs sm:text-sm font-bold text-white">全网聚合搜索「${wd}」</span>
             <span class="text-xs text-indigo-400 bg-indigo-950/70 border border-indigo-800/80 px-2 py-0.5 rounded-full font-mono">共 ${totalCount} 部影片 · 涵盖 ${groupedResults.length} 个源</span>
           </div>
-          <button onclick="goHome()" class="text-xs text-gray-400 hover:text-white transition flex items-center gap-1">
+          <button onclick="goHome()" class="text-xs text-gray-400 hover:text-white transition flex items-center gap-1 cursor-pointer">
             返回推荐首页 ➔
           </button>
         </div>
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-          <button onclick="renderGroupedSearchResults('${wd}', window.__lastGroupedResults, null)" class="filter-tab flex-shrink-0 px-3 py-1.5 rounded-xl font-medium transition ${activeFilterSiteKey === null ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 text-gray-300 hover:bg-dark-700'}">
+        <!-- 顶部的源列表 自动换行全部显示，不横向滚动 -->
+        <div class="flex items-center flex-wrap gap-1.5 text-xs pt-1">
+          <button onclick="renderGroupedSearchResults('${wd}', window.__lastGroupedResults, null)" class="filter-tab px-3 py-1.5 rounded-xl font-medium transition cursor-pointer ${activeFilterSiteKey === null ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 text-gray-300 hover:bg-dark-700 hover:text-white'}">
             全部源 (${totalCount})
           </button>
       `;
@@ -1300,7 +1301,7 @@
         const key = g.site.key || g.site.name;
         const isTabActive = (activeFilterSiteKey === key);
         tabsHtml += `
-          <button onclick="renderGroupedSearchResults('${wd}', window.__lastGroupedResults, '${key}')" class="filter-tab flex-shrink-0 px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${isTabActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 text-gray-300 hover:bg-dark-700'}">
+          <button onclick="renderGroupedSearchResults('${wd}', window.__lastGroupedResults, '${key}')" class="filter-tab px-2.5 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 cursor-pointer ${isTabActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-dark-750 text-gray-300 hover:bg-dark-700 hover:text-white'}">
             <span>${g.site.name}</span>
             <span class="text-[10px] ${isTabActive ? 'bg-indigo-700' : 'bg-dark-850'} px-1.5 py-0.2 rounded-full font-mono text-gray-200">${g.list.length}</span>
           </button>
@@ -1310,46 +1311,21 @@
       headerBar.innerHTML = tabsHtml;
       wrapper.appendChild(headerBar);
 
-      // 2. Sections per Source
+      // 2. Direct Unified Poster Grid: 全部并列平铺显示在一起
+      const unifiedGrid = document.createElement('div');
+      unifiedGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4';
+
       const displayedGroups = activeFilterSiteKey
         ? groupedResults.filter(g => (g.site.key === activeFilterSiteKey || g.site.name === activeFilterSiteKey))
         : groupedResults;
 
       displayedGroups.forEach(g => {
-        const section = document.createElement('div');
-        section.className = 'bg-dark-850/50 p-4 sm:p-5 rounded-2xl border border-gray-800/80 space-y-3.5';
-
-        section.innerHTML = `
-          <div class="flex items-center justify-between border-b border-gray-800/80 pb-2.5">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/40"></span>
-              <h3 class="font-bold text-sm sm:text-base text-white">【${g.site.name}】</h3>
-              <span class="text-[11px] text-indigo-400 bg-indigo-950/80 border border-indigo-800 px-2 py-0.5 rounded-full font-mono font-medium">${g.list.length} 部</span>
-            </div>
-            <button class="set-main-site-btn text-xs text-gray-400 hover:text-indigo-400 transition flex items-center gap-1 font-medium">
-              设为主站点 ➔
-            </button>
-          </div>
-          <div class="section-cards-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4"></div>
-        `;
-
-        section.querySelector('.set-main-site-btn').onclick = () => {
-          currentSite = g.site;
-          const sites = currentConfig?.video?.sites || currentConfig?.sites || [];
-          const idx = sites.indexOf(g.site);
-          if (idx !== -1) siteSelect.value = idx;
-          showToast(`已切换当前主站点至: ${g.site.name}`);
-          loadSiteHome();
-        };
-
-        const grid = section.querySelector('.section-cards-grid');
         g.list.forEach(item => {
-          grid.appendChild(createVideoCardElement(item, g.site));
+          unifiedGrid.appendChild(createVideoCardElement(item, g.site));
         });
-
-        wrapper.appendChild(section);
       });
 
+      wrapper.appendChild(unifiedGrid);
       videoGrid.appendChild(wrapper);
     }
 

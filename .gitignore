@@ -53,4 +53,7 @@ vod_cache/
 
 
 release_apk/
+data/
+*.db
+
 
