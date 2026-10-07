@@ -1332,7 +1332,13 @@
     // ==============================================================
     // Video Detail & Playback Engine (Enhanced UX)
     // ==============================================================
-    async function openDetail(vodId, historyResumeRecord = null) {
+    async function openDetail(vodId, historyResumeRecord = null, targetSite = null) {
+      if (targetSite) {
+        currentSite = targetSite;
+        const sites = currentConfig?.video?.sites || currentConfig?.sites || [];
+        const sIdx = sites.findIndex(s => (s.key && s.key === targetSite.key) || (s.name && s.name === targetSite.name));
+        if (sIdx !== -1) siteSelect.value = sIdx;
+      }
       if (!currentSite) return;
       playerModal.classList.remove('hidden');
       document.getElementById('modalVodName').textContent = '加载详情中...';
@@ -1349,7 +1355,18 @@
       playerLoading.classList.remove('hidden');
 
       try {
-        const data = await safeFetchJson(getSpiderApiUrl('detail'), { id: vodId });
+        // Ensure target site spider is initialized (e.g. wogg live mirror)
+        try {
+          await fetch(getSpiderApiUrl('init', currentSite), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+        } catch (initErr) {
+          console.warn('[Spider] Detail init note:', initErr);
+        }
+
+        const data = await safeFetchJson(getSpiderApiUrl('detail', currentSite), { id: vodId });
         const list = data.list || [];
         if (!list.length) throw new Error('未获取到有效影片详情');
         
