@@ -460,7 +460,7 @@
           </button>
         </div>
         <!-- Quick Episode Popover Overlay inside playerViewport (Top-Right, High Legibility) -->
-        <div id="quickEpPopover" class="hidden absolute top-12 sm:top-14 right-2.5 sm:right-3 z-40 w-84 sm:w-[480px] max-w-[92vw] max-h-[calc(100%-4.25rem)] rounded-2xl bg-black/65 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-3.5 sm:p-4 flex flex-col transition-all duration-200">
+        <div id="quickEpPopover" class="hidden absolute top-12 sm:top-14 right-2.5 sm:right-3 z-40 w-84 sm:w-[480px] max-w-[92vw] rounded-2xl bg-black/65 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-3.5 sm:p-4 flex flex-col transition-all duration-200" style="max-height: calc(100% - 7.5rem);">
           <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-3 flex-shrink-0">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
@@ -595,6 +595,34 @@
     const playerViewport = document.getElementById('playerViewport');
     const videoElement = document.getElementById('videoElement');
     const playerLoading = document.getElementById('playerLoading');
+
+
+    // ==============================================================
+    // Dynamic Page & Media Document Title Manager
+    // ==============================================================
+    let pageBaseViewTitle = '';
+
+    function updateDocTitle(title) {
+      if (title && title.trim()) {
+        document.title = `${title.trim()} - TVBox Web`;
+      } else {
+        document.title = 'TVBox Web';
+      }
+    }
+
+    function setViewTitle(title) {
+      pageBaseViewTitle = title || '';
+      updateDocTitle(pageBaseViewTitle);
+    }
+
+    function restoreViewTitle() {
+      if (!playerModal.classList.contains('hidden') && currentDetail) {
+        const epLabel = currentEpName || '';
+        updateDocTitle(`▶ ${currentDetail.vod_name}${epLabel ? ` (${epLabel})` : ''}`);
+      } else {
+        updateDocTitle(pageBaseViewTitle);
+      }
+    }
 
     // Toast Alert Helper
     function showToast(msg, duration = 3000) {
@@ -998,6 +1026,7 @@
     // Go Home view
     function goHome() {
       currentTid = '';
+      setViewTitle(currentSite ? `${currentSite.name}` : '');
       loadSiteHome();
     }
 
@@ -1181,6 +1210,7 @@
     }
 
     function openHistoryDrawer() {
+      updateDocTitle('播放历史记录');
       renderHistoryDrawer();
       const backdrop = document.getElementById('historyDrawerBackdrop');
       const drawer = document.getElementById('historyDrawer');
@@ -1195,6 +1225,7 @@
       backdrop.classList.add('opacity-0');
       drawer.classList.add('translate-x-full');
       setTimeout(() => backdrop.classList.add('hidden'), 300);
+      restoreViewTitle();
     }
 
     function clearAllHistory() {
@@ -1393,12 +1424,14 @@
     }
 
     function openSourceModal() {
+      updateDocTitle('TVBox 配置源管理');
       renderSourcesList();
       sourceModal.classList.remove('hidden');
     }
 
     function closeSourceModal() {
       sourceModal.classList.add('hidden');
+      restoreViewTitle();
     }
 
     function renderSourcesList() {
@@ -1694,6 +1727,9 @@
     async function loadCategory(tid) {
       if (!currentSite) return;
       currentTid = tid;
+      const catObj = currentClasses.find(c => String(c.type_id) === String(tid));
+      const catName = catObj ? catObj.type_name : '';
+      setViewTitle(catName ? `${catName} · ${currentSite.name || ''}` : `${currentSite.name || ''}`);
       renderCategoryBar();
       setLoading(true);
       siteErrorCard.classList.add('hidden');
@@ -1844,6 +1880,7 @@
 
       addSearchHistory(wd);
       searchHistoryPopover.classList.add('hidden');
+      setViewTitle(`搜索: ${wd}`);
       setLoading(true);
       siteErrorCard.classList.add('hidden');
       videoGrid.innerHTML = '';
@@ -2020,6 +2057,7 @@
         
         currentDetail = list[0];
         document.getElementById('modalVodName').textContent = currentDetail.vod_name || '未知影片';
+        updateDocTitle(currentDetail.vod_name || '影片详情');
         document.getElementById('modalVodRemarks').textContent = currentDetail.vod_remarks || '';
         document.getElementById('modalVodYear').textContent = currentDetail.vod_year ? `${currentDetail.vod_year}年` : '';
         document.getElementById('modalVodArea').textContent = currentDetail.vod_area || '';
@@ -2223,6 +2261,10 @@
       const ctrlBadge = document.getElementById('ctrlEpBadge');
       if (ctrlBadge) ctrlBadge.textContent = String(idx + 1);
 
+      if (currentDetail) {
+        updateDocTitle(`▶ ${currentDetail.vod_name} (${currentEpName || `第${idx + 1}集`})`);
+      }
+
       renderEpisodes();
       if (isQuickEpOpen) renderQuickEpContent();
       playEpisode(eps[idx], idx, startSeekTime);
@@ -2371,6 +2413,7 @@
       flushCurrentPlayProgress();
       if (isWebFullscreen) exitWebFullscreen();
       playerModal.classList.add('hidden');
+      restoreViewTitle();
       document.querySelector('header').style.zIndex = '';
       playerViewport.style.aspectRatio = "16/9";
       if (hlsInstance) {
@@ -2494,6 +2537,7 @@
     siteSelect.onchange = () => {
       const sites = currentConfig?.video?.sites || currentConfig?.sites || [];
       currentSite = sites[siteSelect.value];
+      setViewTitle(currentSite ? `${currentSite.name}` : '');
       loadSiteHome();
     };
 
@@ -2516,6 +2560,7 @@
 
     // Website Config Floating Modal
     function openWebsiteModal() {
+      updateDocTitle('网盘配置中心');
       const modal = document.getElementById('websiteModal');
       const iframe = document.getElementById('websiteIframe');
       if (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href) {
@@ -2525,6 +2570,7 @@
     }
     function closeWebsiteModal() {
       document.getElementById('websiteModal').classList.add('hidden');
+      restoreViewTitle();
     }
 
     // Bootstrap
