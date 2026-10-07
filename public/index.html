@@ -1078,37 +1078,80 @@
 
     function savePlayHistory(vod, lineIdx, epIdx, ep, currentTime = 0, duration = 0) {
       if (!vod) return;
-      let history = getPlayHistory().filter(h => h.vodId !== vod.vod_id);
+      let history = getPlayHistory();
+      const existing = history.find(h => h.vodId === vod.vod_id);
+      // Preserve existing position/duration if new call provides 0/invalid values
+      let finalCur = currentTime > 0 ? Math.floor(currentTime) : (existing?.currentTime || 0);
+      let finalDur = duration > 0 ? Math.floor(duration) : (existing?.duration || 0);
+
+      // Filter out previous entry to move updated record to top
+      history = history.filter(h => h.vodId !== vod.vod_id);
+
       const record = {
         vodId: vod.vod_id,
         vodName: vod.vod_name,
-        vodPic: vod.vod_pic,
-        siteKey: currentSite?.key,
-        siteName: currentSite?.name,
+        vodPic: vod.vod_pic || existing?.vodPic || '',
+        siteKey: currentSite?.key || existing?.siteKey,
+        siteName: currentSite?.name || existing?.siteName,
         lineIndex: lineIdx,
-        lineName: parsedLines[lineIdx]?.name || '默认线路',
+        lineName: parsedLines[lineIdx]?.name || existing?.lineName || '默认线路',
         epIndex: epIdx,
-        epName: ep?.name || '第1集',
-        epId: ep?.id || '',
-        currentTime: currentTime,
-        duration: duration,
+        epName: ep?.name || existing?.epName || '第1集',
+        epId: ep?.id || existing?.epId || '',
+        currentTime: finalCur,
+        duration: finalDur,
         updatedAt: Date.now()
       };
       history.unshift(record);
-      if (history.length > 40) history = history.slice(0, 40);
-      localStorage.setItem('tvbox_play_history', JSON.stringify(history));
+      if (history.length > 50) history = history.slice(0, 50);
+      try {
+        localStorage.setItem('tvbox_play_history', JSON.stringify(history));
+      } catch (e) {
+        console.warn('[History] Save failed:', e);
+      }
       updateHistoryBadge();
     }
 
     function updatePlayHistoryTime(vodId, currentTime, duration) {
       if (!vodId) return;
+      const cur = Math.floor(currentTime || 0);
+      const dur = Math.floor(duration || 0);
       let history = getPlayHistory();
       const idx = history.findIndex(h => h.vodId === vodId);
+
       if (idx !== -1) {
-        history[idx].currentTime = Math.floor(currentTime);
-        history[idx].duration = Math.floor(duration);
+        // Never overwrite a valid saved currentTime with 0 during load or unmount
+        if (cur > 0 || (cur === 0 && !history[idx].currentTime)) {
+          history[idx].currentTime = cur;
+        }
+        if (dur > 0) {
+          history[idx].duration = dur;
+        }
+        // Sync latest episode info
+        if (typeof currentLineIndex === 'number' && parsedLines[currentLineIndex]) {
+          history[idx].lineIndex = currentLineIndex;
+          history[idx].lineName = parsedLines[currentLineIndex].name;
+        }
+        if (typeof currentEpIndex === 'number' && currentEpName) {
+          history[idx].epIndex = currentEpIndex;
+          history[idx].epName = currentEpName;
+          history[idx].epId = currentEpId || '';
+        }
         history[idx].updatedAt = Date.now();
-        localStorage.setItem('tvbox_play_history', JSON.stringify(history));
+        try {
+          localStorage.setItem('tvbox_play_history', JSON.stringify(history));
+        } catch (e) {}
+      } else if (currentDetail) {
+        // Record didn't exist yet, create it directly
+        const ep = parsedLines[currentLineIndex]?.eps?.[currentEpIndex];
+        savePlayHistory(currentDetail, currentLineIndex, currentEpIndex, ep, cur, dur);
+      }
+    }
+
+    function flushCurrentPlayProgress() {
+      if (!currentDetail || !videoElement) return;
+      if (videoElement.currentTime > 0 || videoElement.duration > 0) {
+        updatePlayHistoryTime(currentDetail.vod_id, videoElement.currentTime, videoElement.duration);
       }
     }
 
@@ -1230,15 +1273,21 @@
       await openDetail(item.vodId, item);
     }
 
-    // Throttled video progress saver
+    // Precise progress saving (Interval + Pause + Seek + Page Hide)
     let lastHistorySaveTime = 0;
     videoElement.addEventListener('timeupdate', () => {
       const now = Date.now();
-      if (now - lastHistorySaveTime > 4000 && currentDetail) {
+      if (now - lastHistorySaveTime > 2000 && currentDetail && videoElement.currentTime > 0) {
         lastHistorySaveTime = now;
         updatePlayHistoryTime(currentDetail.vod_id, videoElement.currentTime, videoElement.duration);
       }
     });
+
+    videoElement.addEventListener('pause', flushCurrentPlayProgress);
+    videoElement.addEventListener('seeked', flushCurrentPlayProgress);
+    videoElement.addEventListener('ended', flushCurrentPlayProgress);
+    window.addEventListener('pagehide', flushCurrentPlayProgress);
+    window.addEventListener('beforeunload', flushCurrentPlayProgress);
 
     document.getElementById('openHistoryBtn')?.addEventListener('click', openHistoryDrawer);
 
@@ -2182,8 +2231,8 @@
       currentEpName = ep.name;
       currentEpIndex = idx;
 
-      // Save to history initially
-      savePlayHistory(currentDetail, currentLineIndex, currentEpIndex, ep, startSeekTime, 0);
+      // Save to history initially (preserve valid time if startSeekTime is 0)
+      savePlayHistory(currentDetail, currentLineIndex, currentEpIndex, ep, startSeekTime, videoElement.duration || 0);
 
       try {
         const currentFlag = parsedLines[currentLineIndex]?.name || '';
@@ -2294,6 +2343,7 @@
     }
 
     function closePlayerModal() {
+      flushCurrentPlayProgress();
       if (isWebFullscreen) exitWebFullscreen();
       playerModal.classList.add('hidden');
       document.querySelector('header').style.zIndex = '';
