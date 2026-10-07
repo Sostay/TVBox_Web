@@ -108,7 +108,7 @@
         </div>
 
         <!-- Search History Dropdown Popover -->
-        <div id="searchHistoryPopover" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-dark-800 border border-gray-700 rounded-xl shadow-2xl p-3 z-[5] text-xs divide-y divide-gray-700/60">
+        <div id="searchHistoryPopover" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-dark-800 border border-gray-700 rounded-xl shadow-2xl p-3 z-50 text-xs divide-y divide-gray-700/60">
           <div class="flex items-center justify-between pb-2 text-gray-400">
             <span class="flex items-center gap-1.5 font-medium text-[11px]">
               <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -148,7 +148,7 @@
         </div>
 
         <!-- Floating Dropdown Menu -->
-        <div id="sourceDropdownMenu" class="hidden absolute right-0 mt-1.5 w-64 origin-top-right rounded-xl bg-dark-800 border border-gray-700 shadow-2xl z-[5] overflow-hidden divide-y divide-gray-700/60 transition-all">
+        <div id="sourceDropdownMenu" class="hidden absolute right-0 mt-1.5 w-64 origin-top-right rounded-xl bg-dark-800 border border-gray-700 shadow-2xl z-50 overflow-hidden divide-y divide-gray-700/60 transition-all">
           <div class="px-3.5 py-2 bg-dark-900/80 flex items-center justify-between text-[11px] text-gray-400">
             <span>快速切换配置源</span>
             <span class="text-[10px] text-indigo-400 font-mono" id="dropdownCurrentLabel">共 0 个源</span>
@@ -182,7 +182,7 @@
   </div>
 
   <!-- Main Content Area -->
-  <main class="relative z-[-1] flex-1 px-3 sm:px-6 py-5 max-w-[1920px] w-full mx-auto">
+  <main class="flex-1 px-3 sm:px-6 py-5 max-w-[1920px] w-full mx-auto">
     <!-- 1. Default Empty State (No Sources) -->
     <div id="noSourceNotice" class="hidden flex flex-col items-center justify-center py-20 px-4 text-center max-w-lg mx-auto">
       <div class="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4 shadow-inner">
@@ -1142,7 +1142,7 @@
     // Helper: Create a single Video Card element
     function createVideoCardElement(item, site = null) {
       const card = document.createElement('div');
-      card.className = 'group relative flex flex-col bg-dark-800 rounded-xl overflow-hidden border border-gray-800/80 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer transform hover:-translate-y-1';
+      card.className = 'group relative flex flex-col bg-dark-800 rounded-xl overflow-hidden border border-gray-800/80 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer hover:-translate-y-1';
       
       const pic = item.vod_pic || '';
       const remarks = item.vod_remarks || '';
