@@ -285,6 +285,17 @@ const server = http.createServer((req, res) => {
   }
 
   // Website configuration center routing
+  if (pathname === '/website' || pathname === '/website/' || pathname === '/website/index.html') {
+    // Serve enhanced website.html from public/ directory
+    const websitePath = path.join(__dirname, 'public', 'website.html');
+    if (fs.existsSync(websitePath)) {
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      });
+      return fs.createReadStream(websitePath).pipe(res);
+    }
+  }
   if (pathname.startsWith('/website') || pathname.startsWith('/siteCookie') || pathname.startsWith('/danmu')) {
     return forwardToBackend(req, res, pathname);
   }

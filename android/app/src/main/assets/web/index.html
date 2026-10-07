@@ -33,10 +33,46 @@
     }
   </script>
   <style>
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0b0f19; }
-    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
+    /* Global Auto-hiding Scrollbar (Mac/iOS style) */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+      transition: scrollbar-color 0.3s ease;
+    }
+    *:hover {
+      scrollbar-color: rgba(156, 163, 175, 0.45) transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent !important;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: transparent;
+      border-radius: 9999px;
+      transition: background 0.3s ease;
+    }
+    *:hover::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.35);
+    }
+    *:hover::-webkit-scrollbar-thumb:hover {
+      background: rgba(99, 102, 241, 0.85);
+    }
+    /* Hide scrollbars completely on smooth-scrolling panels until hovered */
+    .scrollbar-hover-show {
+      scrollbar-width: none;
+    }
+    .scrollbar-hover-show::-webkit-scrollbar-thumb {
+      background: transparent;
+    }
+    .scrollbar-hover-show:hover {
+      scrollbar-width: thin;
+    }
+    .scrollbar-hover-show:hover::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+    }
     .line-clamp-2 {
       display: -webkit-box;
       -webkit-line-clamp: 2;

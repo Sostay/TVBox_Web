@@ -8,6 +8,34 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <style>
+    /* Global Auto-hiding Scrollbar (Mac/iOS style) */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+      transition: scrollbar-color 0.3s ease;
+    }
+    *:hover {
+      scrollbar-color: rgba(145, 166, 189, 0.4) transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent !important;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: transparent;
+      border-radius: 9999px;
+      transition: background 0.3s ease;
+    }
+    *:hover::-webkit-scrollbar-thumb {
+      background: rgba(145, 166, 189, 0.35);
+    }
+    *:hover::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 199, 255, 0.75);
+    }
+
     :root{
       color-scheme:dark;
       --bg:#0a0f1c;--panel:rgba(19,30,48,.86);--panel2:#101929;
