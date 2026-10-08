@@ -90,10 +90,26 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    /* Web Fullscreen Mode (100% Window Size, Zero Scroll) */
+    /* Modal & Overlay Active: Lock Background Scroll & Hide Root Scrollbar */
+    html.modal-open,
+    body.modal-open,
+    html.is-web-fullscreen,
     body.is-web-fullscreen {
       overflow: hidden !important;
+      height: 100% !important;
+      overscroll-behavior: none !important;
+      scrollbar-width: none !important;
     }
+    html.modal-open::-webkit-scrollbar,
+    body.modal-open::-webkit-scrollbar,
+    html.is-web-fullscreen::-webkit-scrollbar,
+    body.is-web-fullscreen::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+
+    /* Web Fullscreen Mode (100% Window Size, Zero Scroll) */
     .modal-web-fullscreen {
       padding: 0 !important;
       margin: 0 !important;
@@ -385,7 +401,7 @@
   <!-- ============================================================== -->
   <!-- Player & Video Detail Modal (Supports Floating Modal & Web Fullscreen) -->
   <!-- ============================================================== -->
-  <div id="playerModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-y-auto">
+  <div id="playerModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-hidden">
     <div id="playerCard" class="bg-dark-800 border border-gray-700/80 rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh] transition-all duration-300">
       
       <!-- Video Player Viewport Container -->
@@ -637,9 +653,30 @@
     function restoreViewTitle() {
       if (!playerModal.classList.contains('hidden') && currentDetail) {
         const epLabel = currentEpName || '';
-        updateDocTitle(`▶ ${currentDetail.vod_name}${epLabel ? ` (${epLabel})` : ''}`);
+        updateDocTitle(`${currentDetail.vod_name}${epLabel ? ` (${epLabel})` : ''}`);
       } else {
         updateDocTitle(pageBaseViewTitle);
+      }
+    }
+
+
+    // ==============================================================
+    // Modal & Floating Window Scroll Lock Manager
+    // ==============================================================
+    function updateModalScrollLock() {
+      const isPlayerOpen = playerModal && !playerModal.classList.contains('hidden');
+      const isWebsiteOpen = !document.getElementById('websiteModal')?.classList.contains('hidden');
+      const isSourceOpen = sourceModal && !sourceModal.classList.contains('hidden');
+      const isHistoryOpen = !document.getElementById('historyDrawer')?.classList.contains('translate-x-full');
+
+      const shouldLock = isPlayerOpen || isWebsiteOpen || isSourceOpen || isHistoryOpen || isWebFullscreen;
+
+      if (shouldLock) {
+        document.documentElement.classList.add('modal-open');
+        document.body.classList.add('modal-open');
+      } else {
+        document.documentElement.classList.remove('modal-open');
+        document.body.classList.remove('modal-open');
       }
     }
 
@@ -1241,6 +1278,7 @@
       backdrop.classList.remove('hidden');
       setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
       drawer.classList.remove('translate-x-full');
+      updateModalScrollLock();
     }
 
     function closeHistoryDrawer() {
@@ -1248,7 +1286,8 @@
       const drawer = document.getElementById('historyDrawer');
       backdrop.classList.add('opacity-0');
       drawer.classList.add('translate-x-full');
-      setTimeout(() => backdrop.classList.add('hidden'), 300);
+      setTimeout(() => { backdrop.classList.add('hidden'); updateModalScrollLock(); }, 300);
+      updateModalScrollLock();
       restoreViewTitle();
     }
 
@@ -1451,10 +1490,12 @@
       updateDocTitle('TVBox 配置源管理');
       renderSourcesList();
       sourceModal.classList.remove('hidden');
+      updateModalScrollLock();
     }
 
     function closeSourceModal() {
       sourceModal.classList.add('hidden');
+      updateModalScrollLock();
       restoreViewTitle();
     }
 
@@ -2231,6 +2272,7 @@
       }
       if (!currentSite) return;
       playerModal.classList.remove('hidden');
+      updateModalScrollLock();
       document.querySelector('header').style.zIndex = '0';
       document.getElementById('modalVodName').textContent = '加载详情中...';
       document.getElementById('modalVodContent').textContent = '';
@@ -2468,7 +2510,7 @@
       if (ctrlBadge) ctrlBadge.textContent = String(idx + 1);
 
       if (currentDetail) {
-        updateDocTitle(`▶ ${currentDetail.vod_name} (${currentEpName || `第${idx + 1}集`})`);
+        updateDocTitle(`${currentDetail.vod_name} (${currentEpName || `第${idx + 1}集`})`);
       }
 
       renderEpisodes();
@@ -2561,8 +2603,10 @@
       const detailPanel = document.getElementById('detailScrollPanel');
 
       if (isWebFullscreen) {
+        document.documentElement.classList.add('is-web-fullscreen');
         document.body.classList.add('is-web-fullscreen');
-        playerModal.classList.remove('p-2', 'sm:p-4', 'lg:p-6', 'overflow-y-auto');
+        updateModalScrollLock();
+        playerModal.classList.remove('p-2', 'sm:p-4', 'lg:p-6', 'overflow-hidden', 'overflow-y-auto');
         playerModal.classList.add('p-0', 'overflow-hidden');
 
         card.classList.remove('max-w-5xl', 'max-h-[92vh]', 'rounded-2xl', 'border');
@@ -2586,15 +2630,17 @@
 
     function exitWebFullscreen() {
       isWebFullscreen = false;
+      document.documentElement.classList.remove('is-web-fullscreen');
       document.body.classList.remove('is-web-fullscreen');
+      updateModalScrollLock();
       const card = document.getElementById('playerCard');
       const btn = document.getElementById('webFullscreenBtn');
       const icon = document.getElementById('webFullscreenIcon');
       const viewport = document.getElementById('playerViewport');
       const detailPanel = document.getElementById('detailScrollPanel');
 
-      playerModal.classList.remove('p-0', 'overflow-hidden');
-      playerModal.classList.add('p-2', 'sm:p-4', 'lg:p-6', 'overflow-y-auto');
+      playerModal.classList.remove('p-0');
+      playerModal.classList.add('p-2', 'sm:p-4', 'lg:p-6', 'overflow-hidden');
 
       card.classList.remove('modal-web-fullscreen');
       card.classList.add('max-w-5xl', 'max-h-[92vh]', 'rounded-2xl', 'border');
@@ -2619,6 +2665,7 @@
       flushCurrentPlayProgress();
       if (isWebFullscreen) exitWebFullscreen();
       playerModal.classList.add('hidden');
+      updateModalScrollLock();
       restoreViewTitle();
       document.querySelector('header').style.zIndex = '';
       playerViewport.style.aspectRatio = "16/9";
@@ -2782,9 +2829,11 @@
         iframe.src = '/website';
       }
       modal.classList.remove('hidden');
+      updateModalScrollLock();
     }
     function closeWebsiteModal() {
       document.getElementById('websiteModal').classList.add('hidden');
+      updateModalScrollLock();
       restoreViewTitle();
     }
 
