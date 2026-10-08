@@ -4,45 +4,6 @@
 
 ---
 
-## 目录结构说明
-
-```text
-TVBox_Web/
-├── gateway.js               # 【核心产出】统一 HTTP 跨域网关 & 视频流防盗链中继代理
-├── index.js                 # 【核心产出】CatVod Node 引擎服务 (免安卓直接运行)
-├── start.bat                # 【核心产出】Windows 一键启动批处理脚本
-├── wexfnwconfig.json        # 引擎本地运行时配置与缓存
-├── public/
-│   └── index.html           # 【核心产出】现代 Web 播放前端 (Tailwind CSS + HLS.js + 源管理)
-├── android/                 # 【核心产出】Android 后端服务工程 (APK 源码)
-│   ├── app/
-│   │   ├── src/main/java/com/tvbox/web/
-│   │   │   ├── engine/SpiderManager.java     (DexClassLoader 动态加载与反射调用引擎)
-│   │   │   ├── server/WebServer.java         (内置 NanoHTTPD Web & REST 接口服务)
-│   │   │   ├── service/WebServerService.java (前台保活服务 & WakeLock/WifiLock)
-│   │   │   └── MainActivity.java             (电视机/手机状态大屏与控制台)
-│   │   └── src/main/assets/web/index.html    (打包内置的 Web 观影前端)
-│   ├── build.gradle
-│   └── settings.gradle
-├── configs/                 # 【用户配置目录】(默认不包含任何影视源，需用户自行配置)
-├── docs/                    # 【调研技术文档】
-│   ├── freebox_readme.md    # kknifer7/FreeBox 架构文档 (JavaFX + TV-K 协作机制)
-│   ├── ok_compat.md         # yaolin-dev/OKVideoMac 兼容性全量技术规范
-│   ├── ok_readme.md         # OKVideoMac 项目概述与 Android Bridge 说明
-│   ├── tvk_readme.md        # kknifer7/TV-K 安卓端项目说明
-│   ├── tvboxosk_readme.md   # kknifer7/TVBoxOS-K 旧版说明
-│   └── wsa_readme.md        # MustardChef/WSABuilds 安卓子系统运行分析
-└── scripts/                 # 【测试与逆向验证脚本】
-    ├── find_routes.py       # Fastify HTTP 路由逆向提取工具
-    ├── inspect_routes.py    # Spider 接口调用上下文嗅探工具
-    ├── test_api.py          # /health、/config、/home 连通性测试
-    ├── test_sites.py        # 批量站点首页并发加载测试
-    ├── test_site_status.py  # 94 个站点可用性体检工具 (已测通 24+ 个即点即播站)
-    └── test_workflow.py     # 选集解析 -> 防盗链 Header 伪装 -> 流代理播放全流程验证
-```
-
----
-
 ## 运行环境要求与安装说明 (Windows)
 
 运行本项目的 Windows 服务端需要 **Node.js (推荐 v18 或以上 LTS 长期支持版)**：

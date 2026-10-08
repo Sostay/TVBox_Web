@@ -62,4 +62,8 @@ start_silent.vbs
 stop.bat
 stop.ps1
 
+# 8. Research Docs
+docs/
+
+
 
