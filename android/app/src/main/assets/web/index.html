@@ -96,7 +96,6 @@
     html.is-web-fullscreen,
     body.is-web-fullscreen {
       overflow: hidden !important;
-      height: 100% !important;
       overscroll-behavior: none !important;
       scrollbar-width: none !important;
     }
@@ -661,8 +660,10 @@
 
 
     // ==============================================================
-    // Modal & Floating Window Scroll Lock Manager
-    // ==============================================================
+    // Modal & Floating Window Scroll Lock Manager (Preserves exact scroll position)
+    let preservedScrollY = 0;
+    let isCurrentlyScrollLocked = false;
+
     function updateModalScrollLock() {
       const isPlayerOpen = playerModal && !playerModal.classList.contains('hidden');
       const isWebsiteOpen = !document.getElementById('websiteModal')?.classList.contains('hidden');
@@ -671,12 +672,17 @@
 
       const shouldLock = isPlayerOpen || isWebsiteOpen || isSourceOpen || isHistoryOpen || isWebFullscreen;
 
-      if (shouldLock) {
+      if (shouldLock && !isCurrentlyScrollLocked) {
+        preservedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        isCurrentlyScrollLocked = true;
         document.documentElement.classList.add('modal-open');
         document.body.classList.add('modal-open');
-      } else {
+      } else if (!shouldLock && isCurrentlyScrollLocked) {
+        isCurrentlyScrollLocked = false;
         document.documentElement.classList.remove('modal-open');
         document.body.classList.remove('modal-open');
+        // Restore exact scroll position seamlessly
+        window.scrollTo(0, preservedScrollY);
       }
     }
 
