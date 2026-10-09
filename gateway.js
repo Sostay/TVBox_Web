@@ -309,7 +309,9 @@ const server = http.createServer((req, res) => {
     '/sw.js': 'sw.js',
     '/icon-192.png': 'icon-192.png',
     '/icon-512.png': 'icon-512.png',
-    '/favicon.ico': 'favicon.ico'
+    '/favicon.ico': 'favicon.ico',
+    '/tailwind.min.js': 'tailwind.min.js',
+    '/hls.min.js': 'hls.min.js'
   };
 
   if (staticFileMap[pathname]) {

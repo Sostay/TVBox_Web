@@ -16,9 +16,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TVBox Web">
 
-  <!-- Tailwind CSS & HLS.js -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+  <!-- Tailwind CSS & HLS.js (100% Local Offline Bundles) -->
+  <script src="/tailwind.min.js"></script>
+  <script src="/hls.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -33,6 +33,32 @@
     }
   </script>
   <style>
+    /* Anti-FOUC & Strict SVG Sizing Guard (Prevents SVG explosion before/without CSS) */
+    svg {
+      box-sizing: border-box;
+      max-width: 100%;
+      max-height: 100%;
+    }
+    header svg {
+      max-width: 24px !important;
+      max-height: 24px !important;
+      flex-shrink: 0;
+    }
+    .brand-logo-icon {
+      width: 20px !important;
+      height: 20px !important;
+      max-width: 20px !important;
+      max-height: 20px !important;
+      flex-shrink: 0;
+    }
+    .brand-logo-box {
+      width: 36px !important;
+      height: 36px !important;
+      max-width: 36px !important;
+      max-height: 36px !important;
+      flex-shrink: 0;
+    }
+
     /* Clean Transparent Auto-hiding Scrollbar (Zero layout gutter & zero track color) */
     * {
       scrollbar-width: thin;
@@ -136,8 +162,8 @@
   <header class="sticky top-0 z-40 bg-dark-800/95 backdrop-blur border-b border-gray-800 px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md">
     <!-- Brand Logo -->
     <div class="flex items-center gap-2.5 cursor-pointer" onclick="goHome()">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="w-9 h-9 brand-logo-box rounded-xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 flex-shrink-0">
+        <svg width="20" height="20" class="w-5 h-5 brand-logo-icon text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>

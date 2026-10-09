@@ -82,6 +82,13 @@ public class WebServer extends NanoHTTPD {
                 addCorsHeaders(resp);
                 return resp;
             }
+            if (uri.equals("/tailwind.min.js") || uri.equals("/hls.min.js")) {
+                String assetFile = uri.substring(1);
+                InputStream is = mContext.getAssets().open("web/" + assetFile);
+                Response resp = newChunkedResponse(Response.Status.OK, "application/javascript; charset=utf-8", is);
+                addCorsHeaders(resp);
+                return resp;
+            }
 
             // 1.1 Cloud Drive Config Center Web UI (/website)
             if (uri.equals("/website") || uri.equals("/website/") || uri.equals("/website/index.html")) {
