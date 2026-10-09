@@ -65,5 +65,8 @@ stop.ps1
 # 8. Research Docs
 docs/
 
+# 9. Development & Diagnostic Scripts
+scripts/
+
 
 
