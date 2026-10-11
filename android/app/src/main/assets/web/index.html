@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <meta name="theme-color" content="#0B0F19">
+  <meta name="theme-color" content="#1F2937">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TVBox Web">
@@ -124,6 +124,7 @@
         left: 0;
         right: 0;
         width: 100%;
+        background-color: #1F2937 !important; /* Matches window controls caption area theme_color seamlessly */
         padding-top: max(0.625rem, env(titlebar-area-y, 0px));
         padding-left: max(0.75rem, env(titlebar-area-x, 0px));
         padding-right: max(0.75rem, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)));
@@ -138,6 +139,17 @@
       .wco-interactive {
         -webkit-app-region: no-drag;
         app-region: no-drag;
+      }
+      /* Auto-avoid native window controls for floating player action buttons in WCO mode */
+      #playerFloatingControls {
+        top: max(0.625rem, calc(env(titlebar-area-y, 0px) + env(titlebar-area-height, 0px) + 0.5rem)) !important;
+        right: max(0.75rem, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.5rem)) !important;
+      }
+      /* Auto-avoid native window controls for quick episode popover in WCO mode */
+      #quickEpPopover {
+        top: max(3.5rem, calc(env(titlebar-area-y, 0px) + env(titlebar-area-height, 0px) + 3.25rem)) !important;
+        right: max(0.75rem, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.5rem)) !important;
+        max-height: calc(100% - env(titlebar-area-height, 0px) - 8.5rem) !important;
       }
     }
 

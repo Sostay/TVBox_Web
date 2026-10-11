@@ -9,7 +9,7 @@
   "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "any",
   "background_color": "#0B0F19",
-  "theme_color": "#0B0F19",
+  "theme_color": "#1F2937",
   "categories": ["entertainment", "video"],
   "icons": [
     {
