@@ -175,6 +175,31 @@
     }
 
     /* Web Fullscreen Mode (100% Window Size, Zero Scroll) */
+    html.is-web-fullscreen,
+    body.is-web-fullscreen {
+      overflow: hidden !important;
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      scrollbar-width: none !important;
+    }
+    html.is-web-fullscreen *,
+    body.is-web-fullscreen * {
+      scrollbar-width: none !important;
+    }
+    html.is-web-fullscreen::-webkit-scrollbar,
+    body.is-web-fullscreen::-webkit-scrollbar,
+    html.is-web-fullscreen *::-webkit-scrollbar,
+    body.is-web-fullscreen *::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
     .modal-web-fullscreen {
       padding: 0 !important;
       margin: 0 !important;
@@ -193,6 +218,7 @@
       max-height: 100vh !important;
       aspect-ratio: auto !important;
       flex: 1 1 100% !important;
+      overflow: hidden !important;
     }
   </style>
 </head>
