@@ -269,6 +269,13 @@ public class WebServer extends NanoHTTPD {
             }
 
             String contentType = okResp.header("Content-Type", "application/octet-stream");
+            if (contentType.equals("application/octet-stream") || contentType.equals("binary/octet-stream")) {
+                if (targetUrl.toLowerCase().contains(".mp4")) {
+                    contentType = "video/mp4";
+                } else if (targetUrl.toLowerCase().contains(".mkv")) {
+                    contentType = "video/x-matroska";
+                }
+            }
             boolean isM3u8 = contentType.contains("mpegurl") || targetUrl.toLowerCase().endsWith(".m3u8");
 
             if (isM3u8) {

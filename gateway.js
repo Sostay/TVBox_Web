@@ -67,7 +67,11 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
   let headers = {};
   if (customHeadersStr) {
     try {
-      headers = JSON.parse(customHeadersStr);
+      const parsed = JSON.parse(customHeadersStr);
+      // Normalize all custom header keys to lowercase to avoid case-insensitive collisions in Node
+      for (const [k, v] of Object.entries(parsed)) {
+        headers[k.toLowerCase()] = v;
+      }
     } catch (e) {
       console.error('[StreamProxy] Failed to parse custom headers:', e);
     }
@@ -77,6 +81,7 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
   if (req.headers.range) {
     headers['range'] = req.headers.range;
   }
+  // Only use browser user-agent if the spider did NOT specify one
   if (!headers['user-agent']) {
     headers['user-agent'] = req.headers['user-agent'] || 'Mozilla/5.0';
   }
@@ -138,12 +143,21 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
     }
 
     // Direct streaming for TS / MP4 chunks
+    let contentTypeHeader = proxyRes.headers['content-type'] || '';
+    if (!contentTypeHeader || contentTypeHeader === 'application/octet-stream' || contentTypeHeader === 'binary/octet-stream') {
+      if (parsedUrl.pathname.endsWith('.mp4') || targetUrl.includes('.mp4')) {
+        contentTypeHeader = 'video/mp4';
+      } else if (parsedUrl.pathname.endsWith('.mkv') || targetUrl.includes('.mkv')) {
+        contentTypeHeader = 'video/x-matroska';
+      }
+    }
+
     const resHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': '*',
       'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges'
     };
-    if (proxyRes.headers['content-type']) resHeaders['Content-Type'] = proxyRes.headers['content-type'];
+    if (contentTypeHeader) resHeaders['Content-Type'] = contentTypeHeader;
     if (proxyRes.headers['content-length']) resHeaders['Content-Length'] = proxyRes.headers['content-length'];
     if (proxyRes.headers['content-range']) resHeaders['Content-Range'] = proxyRes.headers['content-range'];
     if (proxyRes.headers['accept-ranges']) resHeaders['Accept-Ranges'] = proxyRes.headers['accept-ranges'];
