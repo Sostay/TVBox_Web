@@ -140,16 +140,19 @@
         -webkit-app-region: no-drag;
         app-region: no-drag;
       }
-      /* Auto-avoid native window controls for floating player action buttons in WCO mode */
-      #playerFloatingControls {
-        top: max(0.625rem, calc(env(titlebar-area-y, 0px) + env(titlebar-area-height, 0px) + 0.5rem)) !important;
+      /* ONLY avoid native caption controls when in Web Fullscreen (.modal-web-fullscreen) in WCO mode */
+      .modal-web-fullscreen #playerFloatingControls {
+        top: max(0.625rem, env(titlebar-area-y, 0px)) !important;
         right: max(0.75rem, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.5rem)) !important;
+        -webkit-app-region: no-drag !important;
+        app-region: no-drag !important;
       }
-      /* Auto-avoid native window controls for quick episode popover in WCO mode */
-      #quickEpPopover {
-        top: max(3.5rem, calc(env(titlebar-area-y, 0px) + env(titlebar-area-height, 0px) + 3.25rem)) !important;
+      .modal-web-fullscreen #quickEpPopover {
+        top: max(3.5rem, calc(env(titlebar-area-y, 0px) + env(titlebar-area-height, 0px) + 0.75rem)) !important;
         right: max(0.75rem, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.5rem)) !important;
-        max-height: calc(100% - env(titlebar-area-height, 0px) - 8.5rem) !important;
+        max-height: calc(100% - env(titlebar-area-height, 0px) - 6rem) !important;
+        -webkit-app-region: no-drag !important;
+        app-region: no-drag !important;
       }
     }
 
@@ -487,7 +490,7 @@
 
 
         <!-- Top Right Floating Action Controls (Hidden by default, shown on hover/touch) -->
-        <div id="playerFloatingControls" class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center gap-2 z-30 opacity-0 transition-opacity duration-300 pointer-events-none">
+        <div id="playerFloatingControls" class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center gap-2 z-30 opacity-0 transition-opacity duration-300 pointer-events-none select-none">
           <!-- Quick Episode Switcher ("选集") Button at the far left of top-right row -->
           <button id="ctrlEpBtn" onclick="toggleQuickEpPopover(event)" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow pointer-events-auto cursor-pointer" title="选集列表">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -1116,7 +1119,7 @@
     }
 
     function hideControls() {
-      if (videoElement.paused || isQuickEpOpen) return;
+      if (videoElement.paused || isQuickEpOpen || isHoveringTopControls) return;
       if (customControls) {
         customControls.classList.add('opacity-0', 'translate-y-1', 'pointer-events-none');
         customControls.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
@@ -1133,12 +1136,34 @@
       }
     }
 
+    let isHoveringTopControls = false;
+
     playerViewport.addEventListener('mousemove', showControls);
     playerViewport.addEventListener('mouseenter', showControls);
     playerViewport.addEventListener('mouseleave', () => {
-      if (!videoElement.paused && !isQuickEpOpen) hideControls();
+      if (!videoElement.paused && !isQuickEpOpen && !isHoveringTopControls) hideControls();
     });
     playerViewport.addEventListener('touchstart', showControls, { passive: true });
+
+    // Ensure hovering over top-right buttons never hides them prematurely
+    const topCtrlEl = document.getElementById('playerFloatingControls');
+    if (topCtrlEl) {
+      topCtrlEl.addEventListener('mouseenter', () => {
+        isHoveringTopControls = true;
+        if (controlsHideTimer) clearTimeout(controlsHideTimer);
+        showControls();
+      });
+      topCtrlEl.addEventListener('mouseleave', () => {
+        isHoveringTopControls = false;
+        if (!videoElement.paused && !isQuickEpOpen) {
+          controlsHideTimer = setTimeout(hideControls, 2800);
+        }
+      });
+      topCtrlEl.addEventListener('mousemove', (e) => {
+        e.stopPropagation();
+        showControls();
+      });
+    }
 
     document.addEventListener('click', (e) => {
       if (quickEpPopover && !quickEpPopover.classList.contains('hidden')) {
