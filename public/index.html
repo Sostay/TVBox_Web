@@ -521,6 +521,10 @@
           <button id="ctrlEpBtn" onclick="toggleQuickEpPopover(event)" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow pointer-events-auto cursor-pointer" title="选集列表">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
+          <!-- Keyboard Shortcuts Help Button -->
+          <button id="ctrlShortcutsBtn" onclick="toggleShortcutsHelp(event)" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow pointer-events-auto cursor-pointer" title="快捷键说明 (按 ? 或 H)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </button>
           <!-- Web Fullscreen Toggle Button (Pure Icon) -->
           <button id="webFullscreenBtn" onclick="toggleWebFullscreen()" class="p-2 bg-black/65 hover:bg-black/85 border border-white/20 rounded-full text-white transition flex items-center justify-center shadow" title="网页全屏切换 (按 W 或点击)">
             <svg id="webFullscreenIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
@@ -575,7 +579,7 @@
           </div>
 
           <!-- Native Fullscreen Toggle Button -->
-          <button id="ctrlNativeFsBtn" onclick="toggleNativeFullscreen()" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="全屏 / 退出全屏 (双击视频或按 F)">
+          <button id="ctrlNativeFsBtn" onclick="toggleNativeFullscreen()" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="全屏 / 退出全屏 (双击视频或按 Enter)">
             <svg id="ctrlNativeFsIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
           </button>
         </div>
@@ -595,6 +599,96 @@
           <div id="quickLineTabs" class="flex items-center gap-2 overflow-x-auto pb-2.5 mb-2 scrollbar-none flex-shrink-0"></div>
           <!-- Quick Episodes Grid (Adaptive columns & legible text) -->
           <div id="quickEpGrid" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-1"></div>
+        </div>
+        <!-- Keyboard Shortcuts Help Modal Overlay inside playerViewport -->
+        <div id="shortcutsHelpModal" class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none transition-all duration-200">
+          <div class="bg-dark-900/95 border border-white/20 rounded-2xl w-full max-w-lg max-h-[88vh] shadow-2xl flex flex-col overflow-hidden text-xs">
+            <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between flex-shrink-0 bg-white/5">
+              <div class="flex items-center gap-2 text-white font-bold text-sm">
+                <span>⌨️</span>
+                <span>播放器快捷键列表</span>
+                <span class="text-[10px] text-indigo-400 bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-800">h5player 规范</span>
+              </div>
+              <button onclick="closeShortcutsHelp()" class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer" title="关闭 (Esc 或 ?)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="p-4 overflow-y-auto space-y-2 text-gray-200 divide-y divide-white/5">
+              <div class="pt-1 first:pt-0 flex items-center justify-between">
+                <span class="text-gray-400">播放 / 暂停</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">空格 (Space)</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">逐帧微调 (自动暂停)</span>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">D (上一帧)</span>
+                  <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">F (下一帧)</span>
+                </div>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">加速 / 减速播放</span>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">C (+0.1x)</span>
+                  <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">X (-0.1x)</span>
+                </div>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">循环切换正常速度 / 上次倍速</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">Z</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">常规快进 / 快退 5 秒</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">➡ / ⬅ (方向键)</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">快速快进 / 快退 30 秒</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-amber-300 font-bold border border-white/10">Ctrl + ➡ / ⬅</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">音量调节 (±5%)</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">⬆ / ⬇ (或滚轮)</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">静音 / 取消静音</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">M</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">系统全屏 / 退出全屏</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">Enter (或双击画面)</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">网页全屏切换</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">W</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">快速选集列表</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">右上角 [ ≡ ]</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">播放下一集</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">N</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">画中画模式</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">P</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">画面旋转 90°</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">R</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">视频截图 (保存当前帧)</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">S</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">打开 / 关闭本快捷键帮助</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">? 或 H</span>
+              </div>
+            </div>
+            <div class="px-4 py-2 bg-white/5 border-t border-white/10 text-[10px] text-gray-400 text-center flex-shrink-0">
+              按任意快捷键可直接控制 · 按 Esc、? 或点击右上角关闭
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2783,6 +2877,9 @@
 
     function closePlayerModal() {
       flushCurrentPlayProgress();
+      closeShortcutsHelp();
+      currentVideoRotation = 0;
+      if (videoElement) videoElement.style.transform = '';
       if (isWebFullscreen) exitWebFullscreen();
       playerModal.classList.add('hidden');
       updateModalScrollLock();
@@ -2797,7 +2894,135 @@
       videoElement.src = '';
     }
 
-    // Top-Left Player OSD & Unified Feedback (No background box)
+
+    // ==============================================================
+    // Enhanced Media Controller (Frame-by-Frame, Speed, PiP, Rotate, Capture)
+    // ==============================================================
+    let lastPlaybackRate = 2.0;
+    let currentVideoRotation = 0;
+
+    function formatTimeWithMs(sec) {
+      if (!sec || isNaN(sec)) return '00:00.000';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      const ms = Math.floor((sec % 1) * 1000);
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}.${ms < 100 ? (ms < 10 ? '00' : '0') : ''}${ms}`;
+    }
+
+    function stepFrame(direction) {
+      if (!videoElement || isNaN(videoElement.duration)) return;
+      if (!videoElement.paused) {
+        videoElement.pause();
+      }
+      // 0.04s ≈ 1 frame (at 25 fps), standard across h5player and PotPlayer
+      const frameDelta = 0.04;
+      const targetTime = Math.max(0, Math.min(videoElement.duration, videoElement.currentTime + direction * frameDelta));
+      videoElement.currentTime = targetTime;
+      const icon = direction > 0 ? '⏭' : '⏮';
+      const label = direction > 0 ? '下一帧' : '上一帧';
+      showOsd(icon, label, formatTimeWithMs(targetTime));
+    }
+
+    function adjustPlaybackRate(delta) {
+      if (!videoElement) return;
+      let cur = Math.round(videoElement.playbackRate * 100) / 100;
+      let target = Math.max(0.1, Math.min(16, Math.round((cur + delta) * 10) / 10));
+      videoElement.playbackRate = target;
+      if (target !== 1.0) lastPlaybackRate = target;
+      showOsd('⚡', `播放速度: ${target.toFixed(1)}x`, target === 1.0 ? '正常速度' : '');
+    }
+
+    function togglePlaybackRate() {
+      if (!videoElement) return;
+      let cur = Math.round(videoElement.playbackRate * 100) / 100;
+      if (cur !== 1.0) {
+        lastPlaybackRate = cur;
+        videoElement.playbackRate = 1.0;
+        showOsd('⚡', '播放速度: 1.0x', '正常速度');
+      } else {
+        let target = lastPlaybackRate && lastPlaybackRate !== 1.0 ? lastPlaybackRate : 2.0;
+        videoElement.playbackRate = target;
+        showOsd('⚡', `播放速度: ${target.toFixed(1)}x`, '恢复上次倍速');
+      }
+    }
+
+    async function togglePiP() {
+      if (!videoElement) return;
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+          showOsd('📺', '已退出画中画');
+        } else if (document.pictureInPictureEnabled && !videoElement.disablePictureInPicture) {
+          await videoElement.requestPictureInPicture();
+          showOsd('📺', '已开启画中画');
+        } else {
+          showToast('当前浏览器暂不支持画中画模式');
+        }
+      } catch (err) {
+        console.warn('PiP error:', err);
+        showToast('画中画启动失败');
+      }
+    }
+
+    function rotateVideo() {
+      if (!videoElement) return;
+      currentVideoRotation = (currentVideoRotation + 90) % 360;
+      videoElement.style.transform = currentVideoRotation ? `rotate(${currentVideoRotation}deg)` : '';
+      showOsd('🔄', `画面旋转: ${currentVideoRotation}°`);
+    }
+
+    function captureVideoFrame() {
+      if (!videoElement || !videoElement.videoWidth || !videoElement.videoHeight) {
+        return showToast('视频尚未就绪，无法截图');
+      }
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (currentVideoRotation) {
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate((currentVideoRotation * Math.PI) / 180);
+          ctx.drawImage(videoElement, -videoElement.videoWidth / 2, -videoElement.videoHeight / 2);
+        } else {
+          ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        }
+        canvas.toBlob((blob) => {
+          if (!blob) return showToast('截图生成失败');
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const title = currentDetail?.vod_name || 'video';
+          const ep = currentEpName ? `_${currentEpName}` : '';
+          const time = formatTimeStr(videoElement.currentTime).replace(':', '_');
+          a.download = `${title}${ep}_${time}.png`;
+          a.href = url;
+          a.click();
+          URL.revokeObjectURL(url);
+          showOsd('📸', '视频画面截图', '已保存当前帧图片至下载');
+        }, 'image/png');
+      } catch (err) {
+        console.warn('Capture error:', err);
+        showToast('截图失败 (受视频源跨域安全策略限制)');
+      }
+    }
+
+    function toggleShortcutsHelp(e) {
+      if (e) e.stopPropagation();
+      const modal = document.getElementById('shortcutsHelpModal');
+      if (!modal) return;
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function closeShortcutsHelp() {
+      const modal = document.getElementById('shortcutsHelpModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+        // Top-Left Player OSD & Unified Feedback (No background box)
     let osdTimer = null;
     function showOsd(icon, mainText, subText = '', isAmber = false) {
       const osd = document.getElementById('playerOsd');
@@ -2848,10 +3073,16 @@
     }
 
     document.addEventListener('keydown', (e) => {
-      // Ignore if typing in input/textarea
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+      // Ignore if typing in input/textarea/select
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+
+      const helpModal = document.getElementById('shortcutsHelpModal');
 
       if (e.key === 'Escape') {
+        if (helpModal && !helpModal.classList.contains('hidden')) {
+          closeShortcutsHelp();
+          return;
+        }
         closeSourceDropdown();
         closeHistoryDrawer();
         return;
@@ -2859,28 +3090,98 @@
 
       if (playerModal.classList.contains('hidden')) return;
 
+      const key = e.key.toLowerCase();
+
+      // Space: 播放 / 暂停
       if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
         togglePlayPause();
-      } else if (e.key === 'f' || e.key === 'F') {
+      }
+      // D: 上一帧
+      else if (key === 'd') {
+        e.preventDefault();
+        stepFrame(-1);
+      }
+      // F: 下一帧
+      else if (key === 'f') {
+        e.preventDefault();
+        stepFrame(1);
+      }
+      // C: 加速播放 (Shift+C 快速增加 0.25x，常规 +0.1x)
+      else if (key === 'c') {
+        e.preventDefault();
+        adjustPlaybackRate(e.shiftKey ? 0.25 : 0.1);
+      }
+      // X: 减速播放 (Shift+X 快速减少 0.25x，常规 -0.1x)
+      else if (key === 'x') {
+        e.preventDefault();
+        adjustPlaybackRate(e.shiftKey ? -0.25 : -0.1);
+      }
+      // Z: 循环切换正常速度和上次倍速
+      else if (key === 'z') {
+        e.preventDefault();
+        togglePlaybackRate();
+      }
+      // Enter: 系统全屏切换 (Enter 替代原 F 键，避免与下一帧冲突)
+      else if (e.key === 'Enter') {
         e.preventDefault();
         toggleNativeFullscreen();
-      } else if (e.key === 'w' || e.key === 'W') {
+      }
+      // W: 网页全屏切换
+      else if (key === 'w') {
         e.preventDefault();
         toggleWebFullscreen();
-      } else if (e.key === 'ArrowRight') {
+      }
+      // M: 静音 / 取消静音
+      else if (key === 'm') {
+        e.preventDefault();
+        toggleMute();
+      }
+      // N: 播放下一集
+      else if (key === 'n') {
+        e.preventDefault();
+        playNextEpisode();
+      }
+      // P: 画中画模式
+      else if (key === 'p') {
+        e.preventDefault();
+        togglePiP();
+      }
+      // R: 画面旋转 90度
+      else if (key === 'r') {
+        e.preventDefault();
+        rotateVideo();
+      }
+      // S: 视频当前帧截图保存
+      else if (key === 's') {
+        e.preventDefault();
+        captureVideoFrame();
+      }
+      // ? 或 H: 快捷键帮助中心
+      else if (key === 'h' || e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        toggleShortcutsHelp();
+      }
+      // 方向键 ➡: 快进 5秒 (Ctrl + ➡ 为 30秒)
+      else if (e.key === 'ArrowRight') {
         e.preventDefault();
         handleSeek(1, e.ctrlKey);
-      } else if (e.key === 'ArrowLeft') {
+      }
+      // 方向键 ⬅: 快退 5秒 (Ctrl + ⬅ 为 30秒)
+      else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         handleSeek(-1, e.ctrlKey);
-      } else if (e.key === 'ArrowUp') {
+      }
+      // 方向键 ⬆: 音量 +5%
+      else if (e.key === 'ArrowUp') {
         e.preventDefault();
         videoElement.volume = Math.min(1, videoElement.volume + 0.05);
         videoElement.muted = false;
         updateVolumeUI();
         showVolumeOsd();
-      } else if (e.key === 'ArrowDown') {
+      }
+      // 方向键 ⬇: 音量 -5%
+      else if (e.key === 'ArrowDown') {
         e.preventDefault();
         videoElement.volume = Math.max(0, videoElement.volume - 0.05);
         updateVolumeUI();
