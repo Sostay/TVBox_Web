@@ -116,8 +116,8 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
         const rewritten = body.split('\n').map(line => {
           const trimmed = line.trim();
           if (!trimmed || trimmed.startsWith('#')) {
-            // Check for URI in tags like #EXT-X-KEY:METHOD=AES-128,URI="key.key"
-            if (trimmed.startsWith('#EXT-X-KEY') || trimmed.startsWith('#EXT-X-MAP')) {
+            // Check for URI in tags like #EXT-X-KEY, #EXT-X-MAP, #EXT-X-MEDIA (Audio/Subtitles)
+            if (trimmed.startsWith('#') && (trimmed.includes('URI="') || trimmed.includes("URI='"))) {
               return trimmed.replace(/URI=["']([^"']+)["']/g, (m, uri) => {
                 const absUri = new URL(uri, baseUrl).href;
                 const proxied = `/api/stream?url=${encodeURIComponent(absUri)}&headers=${encodeURIComponent(customHeadersStr || '{}')}`;

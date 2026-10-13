@@ -289,6 +289,23 @@ public class WebServer extends NanoHTTPD {
                 while ((line = reader.readLine()) != null) {
                     String trimmed = line.trim();
                     if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                        if (trimmed.startsWith("#") && (trimmed.contains("URI=\"") || trimmed.contains("URI='"))) {
+                            java.util.regex.Pattern p = java.util.regex.Pattern.compile("URI=[\"']([^\"']+)[\"']");
+                            java.util.regex.Matcher m = p.matcher(trimmed);
+                            StringBuffer sbLine = new StringBuffer();
+                            while (m.find()) {
+                                String rawUri = m.group(1);
+                                String absUri = rawUri.startsWith("http://") || rawUri.startsWith("https://")
+                                        ? rawUri
+                                        : baseUrl + rawUri;
+                                String proxied = "/api/stream?url=" + URLEncoder.encode(absUri, "UTF-8")
+                                        + "&headers=" + (headersStr != null ? headersStr : "");
+                                m.appendReplacement(sbLine, "URI=\"" + java.util.regex.Matcher.quoteReplacement(proxied) + "\"");
+                            }
+                            m.appendTail(sbLine);
+                            sb.append(sbLine.toString()).append("\n");
+                            continue;
+                        }
                         sb.append(line).append("\n");
                         continue;
                     }

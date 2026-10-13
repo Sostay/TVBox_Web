@@ -578,6 +578,20 @@
             </div>
           </div>
 
+          <!-- Audio Track Switcher ("音轨") Button -->
+          <div class="relative flex items-center">
+            <button id="ctrlAudioBtn" onclick="toggleAudioTrackPopover(event)" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="音轨选择 (快捷键 A)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+            </button>
+          </div>
+
+          <!-- Subtitle Switcher ("字幕") Button -->
+          <div class="relative flex items-center">
+            <button id="ctrlSubtitleBtn" onclick="toggleSubtitlePopover(event)" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="字幕选择 (快捷键 V)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+            </button>
+          </div>
+
           <!-- Native Fullscreen Toggle Button -->
           <button id="ctrlNativeFsBtn" onclick="toggleNativeFullscreen()" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer shadow" title="全屏 / 退出全屏 (双击视频或按 Enter)">
             <svg id="ctrlNativeFsIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
@@ -599,6 +613,35 @@
           <div id="quickLineTabs" class="flex items-center gap-2 overflow-x-auto pb-2.5 mb-2 scrollbar-none flex-shrink-0"></div>
           <!-- Quick Episodes Grid (Adaptive columns & legible text) -->
           <div id="quickEpGrid" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-1"></div>
+        </div>
+        <!-- Audio Track Popover Overlay inside playerViewport -->
+        <div id="audioTrackPopover" class="hidden absolute bottom-12 right-16 sm:bottom-14 sm:right-24 z-40 w-64 sm:w-72 max-w-[90vw] rounded-2xl bg-black/80 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-3.5 flex flex-col transition-all duration-200">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10 mb-2 flex-shrink-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs">🎵</span>
+              <span class="text-xs font-bold text-white">音轨选择</span>
+              <span id="audioTrackCountBadge" class="text-[10px] text-indigo-300 font-mono">(0)</span>
+            </div>
+            <button onclick="closeAudioTrackPopover()" class="p-1 text-gray-400 hover:text-white rounded-lg transition cursor-pointer" title="关闭">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="audioTrackList" class="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-48 text-xs"></div>
+        </div>
+
+        <!-- Subtitle Popover Overlay inside playerViewport -->
+        <div id="subtitlePopover" class="hidden absolute bottom-12 right-8 sm:bottom-14 sm:right-14 z-40 w-64 sm:w-72 max-w-[90vw] rounded-2xl bg-black/80 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-3.5 flex flex-col transition-all duration-200">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10 mb-2 flex-shrink-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs">💬</span>
+              <span class="text-xs font-bold text-white">字幕选择</span>
+              <span id="subtitleCountBadge" class="text-[10px] text-indigo-300 font-mono">(0)</span>
+            </div>
+            <button onclick="closeSubtitlePopover()" class="p-1 text-gray-400 hover:text-white rounded-lg transition cursor-pointer" title="关闭">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="subtitleTrackList" class="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-48 text-xs"></div>
         </div>
         <!-- Keyboard Shortcuts Help Modal Overlay inside playerViewport -->
         <div id="shortcutsHelpModal" class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none transition-all duration-200">
@@ -651,6 +694,14 @@
               <div class="pt-2 flex items-center justify-between">
                 <span class="text-gray-400">静音 / 取消静音</span>
                 <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">M</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">音轨切换 (循环)</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">A</span>
+              </div>
+              <div class="pt-2 flex items-center justify-between">
+                <span class="text-gray-400">字幕切换 (循环)</span>
+                <span class="font-mono bg-white/10 px-2 py-0.5 rounded text-indigo-300 font-bold border border-white/10">V</span>
               </div>
               <div class="pt-2 flex items-center justify-between">
                 <span class="text-gray-400">系统全屏 / 退出全屏</span>
@@ -1290,6 +1341,12 @@
         if (!quickEpPopover.contains(e.target) && e.target !== ctrlEpBtn && !ctrlEpBtn?.contains(e.target)) {
           closeQuickEpPopover();
         }
+      }
+      if (isAudioPopoverOpen && !document.getElementById('audioTrackPopover')?.contains(e.target) && e.target !== document.getElementById('ctrlAudioBtn') && !document.getElementById('ctrlAudioBtn')?.contains(e.target)) {
+        closeAudioTrackPopover();
+      }
+      if (isSubtitlePopoverOpen && !document.getElementById('subtitlePopover')?.contains(e.target) && e.target !== document.getElementById('ctrlSubtitleBtn') && !document.getElementById('ctrlSubtitleBtn')?.contains(e.target)) {
+        closeSubtitlePopover();
       }
     });
 
@@ -2734,6 +2791,7 @@
 
     async function playEpisode(ep, idx = 0, startSeekTime = 0) {
       playerLoading.classList.remove('hidden');
+      resetAudioAndSubtitleTracks();
       if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
@@ -2761,8 +2819,9 @@
         console.log('[Player] Playing stream:', proxyStreamUrl);
 
         
-        // Maintain exact native video aspect ratio
+        // Maintain exact native video aspect ratio & sync tracks
         videoElement.onloadedmetadata = () => {
+          syncAudioAndSubtitleTracks();
           if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0 && !isWebFullscreen) {
             const vRatio = videoElement.videoWidth / videoElement.videoHeight;
             if (vRatio >= 0.5 && vRatio <= 3.0) {
@@ -2773,18 +2832,33 @@
 
         const onCanPlay = () => {
           playerLoading.classList.add('hidden');
+          syncAudioAndSubtitleTracks();
           if (startSeekTime > 0) {
             videoElement.currentTime = startSeekTime;
           }
           videoElement.play().catch(e => console.warn('Autoplay prevented:', e));
         };
+        loadExternalSubtitles(playData);
 
         if (playUrl.includes('.m3u8') || playData.format === 'application/vnd.apple.mpegurl') {
           if (Hls.isSupported()) {
             hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true });
             hlsInstance.loadSource(proxyStreamUrl);
             hlsInstance.attachMedia(videoElement);
-            hlsInstance.on(Hls.Events.MANIFEST_PARSED, onCanPlay);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, (e, data) => {
+              syncAudioAndSubtitleTracks();
+              onCanPlay();
+            });
+            hlsInstance.on(Hls.Events.AUDIO_TRACKS_UPDATED, syncAudioAndSubtitleTracks);
+            hlsInstance.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, syncAudioAndSubtitleTracks);
+            hlsInstance.on(Hls.Events.AUDIO_TRACK_SWITCHED, (e, data) => {
+              activeAudioTrackIndex = data.id;
+              renderAudioTrackMenu();
+            });
+            hlsInstance.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (e, data) => {
+              activeSubtitleTrackIndex = data.id;
+              renderSubtitleMenu();
+            });
             hlsInstance.on(Hls.Events.ERROR, (event, data) => {
               if (data.fatal) {
                 showToast('播放错误: 视频切片加载中断');
@@ -2878,6 +2952,8 @@
     function closePlayerModal() {
       flushCurrentPlayProgress();
       closeShortcutsHelp();
+      closeAudioTrackPopover();
+      closeSubtitlePopover();
       currentVideoRotation = 0;
       if (videoElement) videoElement.style.transform = '';
       if (isWebFullscreen) exitWebFullscreen();
@@ -2896,7 +2972,412 @@
 
 
     // ==============================================================
-    // Enhanced Media Controller (Frame-by-Frame, Speed, PiP, Rotate, Capture)
+
+    // ==============================================================
+    // Audio Tracks & Subtitles Management Engine
+    // ==============================================================
+    let currentAudioTracks = [];
+    let activeAudioTrackIndex = 0;
+    let currentSubtitleTracks = [];
+    let activeSubtitleTrackIndex = -1; // -1 means off
+    let isAudioPopoverOpen = false;
+    let isSubtitlePopoverOpen = false;
+
+    function resetAudioAndSubtitleTracks() {
+      currentAudioTracks = [];
+      activeAudioTrackIndex = 0;
+      currentSubtitleTracks = [];
+      activeSubtitleTrackIndex = -1;
+      closeAudioTrackPopover();
+      closeSubtitlePopover();
+      const oldTracks = videoElement.querySelectorAll('track.custom-dynamic-sub-track');
+      oldTracks.forEach(t => t.remove());
+      renderAudioTrackMenu();
+      renderSubtitleMenu();
+    }
+
+    function syncAudioAndSubtitleTracks() {
+      // 1. Check Hls tracks
+      if (hlsInstance) {
+        // Audio
+        if (hlsInstance.audioTracks && hlsInstance.audioTracks.length > 0) {
+          currentAudioTracks = hlsInstance.audioTracks.map((t, i) => ({
+            id: t.id !== undefined ? t.id : i,
+            name: t.name || (t.lang ? `语言: ${t.lang.toUpperCase()}` : `音轨 ${i + 1}`),
+            lang: t.lang || '',
+            default: !!t.default,
+            source: 'hls'
+          }));
+          // Ensure first audio track is selected if -1 or unset
+          if (hlsInstance.audioTrack === -1 || hlsInstance.audioTrack == null || hlsInstance.audioTrack < 0 || hlsInstance.audioTrack >= currentAudioTracks.length) {
+            const defIdx = currentAudioTracks.findIndex(t => t.default);
+            activeAudioTrackIndex = defIdx >= 0 ? defIdx : 0;
+            hlsInstance.audioTrack = activeAudioTrackIndex;
+            console.log('[Audio] Hls auto-selected audio track:', activeAudioTrackIndex, currentAudioTracks[activeAudioTrackIndex]);
+          } else {
+            activeAudioTrackIndex = hlsInstance.audioTrack;
+          }
+        }
+        // Subtitles from Hls
+        if (hlsInstance.subtitleTracks && hlsInstance.subtitleTracks.length > 0) {
+          const hlsSubs = hlsInstance.subtitleTracks.map((t, i) => ({
+            id: t.id !== undefined ? t.id : i,
+            name: t.name || (t.lang ? `字幕: ${t.lang.toUpperCase()}` : `内置字幕 ${i + 1}`),
+            lang: t.lang || '',
+            default: !!t.default,
+            source: 'hls'
+          }));
+          const nonHlsSubs = currentSubtitleTracks.filter(s => s.source !== 'hls');
+          currentSubtitleTracks = [...hlsSubs, ...nonHlsSubs];
+          if (hlsInstance.subtitleTrack === -1 || hlsInstance.subtitleTrack == null) {
+            const defSub = hlsSubs.findIndex(t => t.default);
+            activeSubtitleTrackIndex = defSub >= 0 ? defSub : 0;
+            hlsInstance.subtitleTrack = activeSubtitleTrackIndex;
+            hlsInstance.subtitleDisplay = true;
+          } else {
+            activeSubtitleTrackIndex = hlsInstance.subtitleTrack;
+          }
+        }
+      }
+
+      // 2. Check native audioTracks
+      if (videoElement.audioTracks && videoElement.audioTracks.length > 0 && currentAudioTracks.length === 0) {
+        currentAudioTracks = [];
+        let enabledIdx = -1;
+        for (let i = 0; i < videoElement.audioTracks.length; i++) {
+          const t = videoElement.audioTracks[i];
+          currentAudioTracks.push({
+            id: t.id || i,
+            name: t.label || (t.language ? `语言: ${t.language.toUpperCase()}` : `音轨 ${i + 1}`),
+            lang: t.language || '',
+            default: (i === 0),
+            source: 'native'
+          });
+          if (t.enabled && enabledIdx === -1) enabledIdx = i;
+        }
+        if (enabledIdx === -1) {
+          videoElement.audioTracks[0].enabled = true;
+          activeAudioTrackIndex = 0;
+        } else {
+          activeAudioTrackIndex = enabledIdx;
+        }
+      }
+
+      // 3. Check native textTracks
+      if (videoElement.textTracks && videoElement.textTracks.length > 0 && currentSubtitleTracks.length === 0) {
+        currentSubtitleTracks = [];
+        let showingIdx = -1;
+        for (let i = 0; i < videoElement.textTracks.length; i++) {
+          const t = videoElement.textTracks[i];
+          currentSubtitleTracks.push({
+            id: t.id || i,
+            name: t.label || (t.language ? `字幕: ${t.language.toUpperCase()}` : `字幕 ${i + 1}`),
+            lang: t.language || '',
+            default: (i === 0),
+            source: 'native'
+          });
+          if (t.mode === 'showing' && showingIdx === -1) showingIdx = i;
+        }
+        if (showingIdx === -1 && currentSubtitleTracks.length > 0) {
+          videoElement.textTracks[0].mode = 'showing';
+          activeSubtitleTrackIndex = 0;
+        } else {
+          activeSubtitleTrackIndex = showingIdx;
+        }
+      }
+
+      renderAudioTrackMenu();
+      renderSubtitleMenu();
+    }
+
+    function renderAudioTrackMenu() {
+      const listEl = document.getElementById('audioTrackList');
+      const badgeEl = document.getElementById('audioTrackCountBadge');
+      const btnEl = document.getElementById('ctrlAudioBtn');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      if (badgeEl) badgeEl.textContent = `(${currentAudioTracks.length || 1})`;
+
+      if (currentAudioTracks.length === 0) {
+        listEl.innerHTML = `
+          <div class="px-3 py-2.5 rounded-xl bg-white/5 text-gray-300 flex items-center justify-between border border-white/5">
+            <div class="flex items-center gap-2">
+              <span class="text-sm">🎵</span>
+              <div>
+                <div class="font-medium text-white">默认音轨</div>
+                <div class="text-[10px] text-gray-400">单音轨媒体，已自动激活并正常播放</div>
+              </div>
+            </div>
+            <span class="text-xs text-indigo-400 font-bold">✓ 正常</span>
+          </div>
+        `;
+        if (btnEl) btnEl.classList.remove('text-indigo-400');
+        return;
+      }
+
+      if (btnEl) btnEl.classList.add('text-indigo-400');
+
+      currentAudioTracks.forEach((track, idx) => {
+        const isSelected = (idx === activeAudioTrackIndex);
+        const btn = document.createElement('button');
+        btn.className = `w-full px-3 py-2.5 rounded-xl text-left flex items-center justify-between transition cursor-pointer border ${
+          isSelected
+            ? 'bg-indigo-600/90 text-white font-bold border-indigo-400/80 shadow'
+            : 'bg-white/5 hover:bg-white/15 text-gray-200 border-white/5'
+        }`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-2 truncate flex-1 min-w-0">
+            <span>🎵</span>
+            <div class="truncate">
+              <div class="truncate font-medium">${track.name || `音轨 ${idx + 1}`}</div>
+              ${track.lang ? `<div class="text-[10px] opacity-75">${track.lang}</div>` : ''}
+            </div>
+          </div>
+          ${isSelected ? '<span class="text-xs font-bold ml-2">✓ 播放中</span>' : ''}
+        `;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          selectAudioTrack(idx);
+        };
+        listEl.appendChild(btn);
+      });
+    }
+
+    function selectAudioTrack(idx) {
+      if (!currentAudioTracks[idx]) return;
+      activeAudioTrackIndex = idx;
+      const track = currentAudioTracks[idx];
+
+      if (track.source === 'hls' && hlsInstance) {
+        hlsInstance.audioTrack = idx;
+      } else if (track.source === 'native' && videoElement.audioTracks) {
+        for (let i = 0; i < videoElement.audioTracks.length; i++) {
+          videoElement.audioTracks[i].enabled = (i === idx);
+        }
+      }
+
+      showOsd('🎵', `音轨: ${track.name}`, `已切换到第 ${idx + 1}/${currentAudioTracks.length} 条音轨`);
+      renderAudioTrackMenu();
+      closeAudioTrackPopover();
+    }
+
+    function cycleAudioTrack() {
+      if (currentAudioTracks.length <= 1) {
+        return showOsd('🎵', '当前为单音轨资源', '无需切换');
+      }
+      const nextIdx = (activeAudioTrackIndex + 1) % currentAudioTracks.length;
+      selectAudioTrack(nextIdx);
+    }
+
+    function renderSubtitleMenu() {
+      const listEl = document.getElementById('subtitleTrackList');
+      const badgeEl = document.getElementById('subtitleCountBadge');
+      const btnEl = document.getElementById('ctrlSubtitleBtn');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      if (badgeEl) badgeEl.textContent = `(${currentSubtitleTracks.length})`;
+
+      // Always include "关闭字幕" (index -1)
+      const isOff = (activeSubtitleTrackIndex === -1);
+      const offBtn = document.createElement('button');
+      offBtn.className = `w-full px-3 py-2 rounded-xl text-left flex items-center justify-between transition cursor-pointer border ${
+        isOff
+          ? 'bg-indigo-600/90 text-white font-bold border-indigo-400/80 shadow'
+          : 'bg-white/5 hover:bg-white/15 text-gray-300 border-white/5'
+      }`;
+      offBtn.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span>🚫</span>
+          <span>关闭字幕</span>
+        </div>
+        ${isOff ? '<span class="text-xs font-bold">✓</span>' : ''}
+      `;
+      offBtn.onclick = (e) => {
+        e.stopPropagation();
+        selectSubtitleTrack(-1);
+      };
+      listEl.appendChild(offBtn);
+
+      if (currentSubtitleTracks.length === 0) {
+        const noSubDiv = document.createElement('div');
+        noSubDiv.className = 'px-3 py-2 text-[11px] text-gray-500 text-center';
+        noSubDiv.textContent = '未检测到内置或外挂字幕';
+        listEl.appendChild(noSubDiv);
+        if (btnEl) btnEl.classList.remove('text-indigo-400');
+        return;
+      }
+
+      if (btnEl) btnEl.classList.add('text-indigo-400');
+
+      currentSubtitleTracks.forEach((sub, idx) => {
+        const isSelected = (idx === activeSubtitleTrackIndex);
+        const btn = document.createElement('button');
+        btn.className = `w-full px-3 py-2 rounded-xl text-left flex items-center justify-between transition cursor-pointer border ${
+          isSelected
+            ? 'bg-indigo-600/90 text-white font-bold border-indigo-400/80 shadow'
+            : 'bg-white/5 hover:bg-white/15 text-gray-200 border-white/5'
+        }`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-2 truncate flex-1 min-w-0">
+            <span>💬</span>
+            <div class="truncate">
+              <span class="truncate font-medium">${sub.name || `字幕 ${idx + 1}`}</span>
+              ${sub.isExternal ? '<span class="text-[9px] bg-indigo-950 text-indigo-300 px-1 py-0.2 rounded ml-1 border border-indigo-800">外挂</span>' : ''}
+            </div>
+          </div>
+          ${isSelected ? '<span class="text-xs font-bold ml-2">✓ 显示中</span>' : ''}
+        `;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          selectSubtitleTrack(idx);
+        };
+        listEl.appendChild(btn);
+      });
+    }
+
+    function selectSubtitleTrack(idx) {
+      activeSubtitleTrackIndex = idx;
+      if (idx === -1) {
+        if (hlsInstance) {
+          hlsInstance.subtitleTrack = -1;
+          hlsInstance.subtitleDisplay = false;
+        }
+        if (videoElement.textTracks) {
+          for (let i = 0; i < videoElement.textTracks.length; i++) {
+            videoElement.textTracks[i].mode = 'hidden';
+          }
+        }
+        showOsd('💬', '字幕已关闭');
+      } else {
+        const sub = currentSubtitleTracks[idx];
+        if (!sub) return;
+        if (sub.source === 'hls' && hlsInstance) {
+          hlsInstance.subtitleTrack = idx;
+          hlsInstance.subtitleDisplay = true;
+        } else if (videoElement.textTracks) {
+          for (let i = 0; i < videoElement.textTracks.length; i++) {
+            videoElement.textTracks[i].mode = (i === idx) ? 'showing' : 'hidden';
+          }
+        }
+        showOsd('💬', `字幕: ${sub.name}`, `已开启第 ${idx + 1}/${currentSubtitleTracks.length} 款字幕`);
+      }
+      renderSubtitleMenu();
+      closeSubtitlePopover();
+    }
+
+    function cycleSubtitleTrack() {
+      if (currentSubtitleTracks.length === 0) {
+        return showOsd('💬', '当前无字幕可用');
+      }
+      let nextIdx = activeSubtitleTrackIndex + 1;
+      if (nextIdx >= currentSubtitleTracks.length) {
+        nextIdx = -1;
+      }
+      selectSubtitleTrack(nextIdx);
+    }
+
+    function toggleAudioTrackPopover(e) {
+      if (e) e.stopPropagation();
+      closeSubtitlePopover();
+      closeQuickEpPopover();
+      const popover = document.getElementById('audioTrackPopover');
+      if (!popover) return;
+      isAudioPopoverOpen = !isAudioPopoverOpen;
+      if (isAudioPopoverOpen) {
+        popover.classList.remove('hidden');
+        renderAudioTrackMenu();
+      } else {
+        popover.classList.add('hidden');
+      }
+    }
+
+    function closeAudioTrackPopover() {
+      const popover = document.getElementById('audioTrackPopover');
+      if (popover) popover.classList.add('hidden');
+      isAudioPopoverOpen = false;
+    }
+
+    function toggleSubtitlePopover(e) {
+      if (e) e.stopPropagation();
+      closeAudioTrackPopover();
+      closeQuickEpPopover();
+      const popover = document.getElementById('subtitlePopover');
+      if (!popover) return;
+      isSubtitlePopoverOpen = !isSubtitlePopoverOpen;
+      if (isSubtitlePopoverOpen) {
+        popover.classList.remove('hidden');
+        renderSubtitleMenu();
+      } else {
+        popover.classList.add('hidden');
+      }
+    }
+
+    function closeSubtitlePopover() {
+      const popover = document.getElementById('subtitlePopover');
+      if (popover) popover.classList.add('hidden');
+      isSubtitlePopoverOpen = false;
+    }
+
+    async function loadExternalSubtitles(playData) {
+      const raw = playData.subs || playData.sub || playData.extra?.sub || playData.extra?.subs;
+      if (!raw) return;
+      let list = [];
+      if (Array.isArray(raw)) list = raw;
+      else if (typeof raw === 'object') list = [raw];
+      else if (typeof raw === 'string') list = [{ url: raw, name: '外挂字幕' }];
+
+      const validList = list.filter(item => item && (item.url || item.src || typeof item === 'string'));
+      for (let i = 0; i < validList.length; i++) {
+        const item = validList[i];
+        const subUrl = typeof item === 'string' ? item : (item.url || item.src);
+        const subName = (typeof item === 'object' && (item.name || item.label || item.title)) ? (item.name || item.label || item.title) : `外挂字幕 ${i + 1}`;
+        const subLang = (typeof item === 'object' && item.lang) ? item.lang : 'zh';
+        try {
+          let fetchUrl = subUrl;
+          if (!subUrl.startsWith('/') && !subUrl.startsWith(window.location.origin)) {
+            fetchUrl = `/api/stream?url=${encodeURIComponent(subUrl)}`;
+          }
+          const res = await fetch(fetchUrl);
+          if (res.ok) {
+            const rawText = await res.text();
+            let vttText = rawText;
+            if (subUrl.endsWith('.srt') || (!rawText.startsWith('WEBVTT') && rawText.includes('-->'))) {
+              vttText = 'WEBVTT\n\n' + rawText.replace(/\r\n|\r/g, '\n').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+            }
+            const blobUrl = URL.createObjectURL(new Blob([vttText], { type: 'text/vtt' }));
+            const trackEl = document.createElement('track');
+            trackEl.kind = 'subtitles';
+            trackEl.label = subName;
+            trackEl.srclang = subLang;
+            trackEl.src = blobUrl;
+            trackEl.className = 'custom-dynamic-sub-track';
+            if (i === 0) {
+              trackEl.default = true;
+            }
+            videoElement.appendChild(trackEl);
+            if (i === 0 && trackEl.track) {
+              trackEl.track.mode = 'showing';
+            }
+            currentSubtitleTracks.push({
+              id: `ext_${i}`,
+              name: subName,
+              lang: subLang,
+              default: (i === 0),
+              source: 'external',
+              url: subUrl
+            });
+            if (i === 0) activeSubtitleTrackIndex = currentSubtitleTracks.length - 1;
+          }
+        } catch (e) {
+          console.warn('[Subtitle] Failed loading external sub:', e);
+        }
+      }
+      renderSubtitleMenu();
+    }
+
+        // Enhanced Media Controller (Frame-by-Frame, Speed, PiP, Rotate, Capture)
     // ==============================================================
     let lastPlaybackRate = 2.0;
     let currentVideoRotation = 0;
@@ -3083,6 +3564,9 @@
           closeShortcutsHelp();
           return;
         }
+        if (isAudioPopoverOpen) { closeAudioTrackPopover(); return; }
+        if (isSubtitlePopoverOpen) { closeSubtitlePopover(); return; }
+        if (isQuickEpOpen) { closeQuickEpPopover(); return; }
         closeSourceDropdown();
         closeHistoryDrawer();
         return;
@@ -3136,6 +3620,16 @@
       else if (key === 'm') {
         e.preventDefault();
         toggleMute();
+      }
+      // A: 音轨切换 (循环)
+      else if (key === 'a') {
+        e.preventDefault();
+        cycleAudioTrack();
+      }
+      // V: 字幕切换 (循环)
+      else if (key === 'v') {
+        e.preventDefault();
+        cycleSubtitleTrack();
       }
       // N: 播放下一集
       else if (key === 'n') {
