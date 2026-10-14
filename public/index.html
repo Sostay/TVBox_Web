@@ -825,6 +825,9 @@
     let currentEpIndex = 0;
     let currentEpId = '';
     let currentEpName = '';
+    let currentPlayingStreamUrl = '';
+    let currentPlayingCustomHeaders = '';
+    let currentPlayingProxyUrl = '';
     let hlsInstance = null;
     let isWebFullscreen = false;
     let isDescriptionExpanded = false;
@@ -2814,9 +2817,13 @@
         if (!playUrl) throw new Error('解析未返回有效播放直链');
 
         const customHeaders = JSON.stringify(playData.header || {});
-        const proxyStreamUrl = `/api/stream?url=${encodeURIComponent(playUrl)}&headers=${encodeURIComponent(customHeaders)}`;
+        currentPlayingStreamUrl = playUrl;
+        currentPlayingCustomHeaders = customHeaders;
+        currentPlayingProxyUrl = `/api/stream?url=${encodeURIComponent(playUrl)}&headers=${encodeURIComponent(customHeaders)}`;
+        const proxyStreamUrl = currentPlayingProxyUrl;
 
         console.log('[Player] Playing stream:', proxyStreamUrl);
+        fetchAndApplyMediaTracks(playUrl, customHeaders);
 
         
         // Maintain exact native video aspect ratio & sync tracks
@@ -2983,7 +2990,63 @@
     let isAudioPopoverOpen = false;
     let isSubtitlePopoverOpen = false;
 
-    function resetAudioAndSubtitleTracks() {
+
+    async function fetchAndApplyMediaTracks(targetUrl, customHeaders) {
+      if (!targetUrl) return;
+      try {
+        const res = await safeFetchJson(`/api/media_tracks?url=${encodeURIComponent(targetUrl)}&headers=${encodeURIComponent(customHeaders || '{}')}`);
+        if (!res) return;
+
+        // 1. Process audio tracks
+        if (res.audioTracks && res.audioTracks.length > 0) {
+          // If Hls already has multiple tracks from manifest, keep Hls tracks
+          if (hlsInstance && hlsInstance.audioTracks && hlsInstance.audioTracks.length > 1) {
+            return;
+          }
+          currentAudioTracks = res.audioTracks.map((t, i) => ({
+            id: t.trackId !== undefined ? t.trackId : i,
+            index: i,
+            name: t.name || t.desc || `音轨 ${i + 1}`,
+            desc: t.desc || '',
+            codec: t.codec || '',
+            lang: t.lang || '',
+            channels: t.channels || 2,
+            default: (i === 0),
+            source: 'stream'
+          }));
+          activeAudioTrackIndex = 0;
+          renderAudioTrackMenu();
+          console.log('[MediaTracks] Successfully parsed stream audio tracks:', currentAudioTracks);
+        }
+
+        // 2. Process subtitle tracks
+        if (res.subtitleTracks && res.subtitleTracks.length > 0) {
+          if (hlsInstance && hlsInstance.subtitleTracks && hlsInstance.subtitleTracks.length > 1) {
+            return;
+          }
+          const embeddedSubs = res.subtitleTracks.map((t, i) => ({
+            id: t.trackId !== undefined ? t.trackId : i,
+            index: i,
+            name: t.name || `内置字幕 ${i + 1}`,
+            desc: t.desc || '',
+            lang: t.lang || '',
+            default: (i === 0),
+            source: 'embedded'
+          }));
+          const nonEmbedded = currentSubtitleTracks.filter(s => s.source !== 'embedded');
+          currentSubtitleTracks = [...embeddedSubs, ...nonEmbedded];
+          if (activeSubtitleTrackIndex === -1 && currentSubtitleTracks.length > 0) {
+            activeSubtitleTrackIndex = 0;
+          }
+          renderSubtitleMenu();
+          console.log('[MediaTracks] Successfully parsed stream subtitle tracks:', currentSubtitleTracks);
+        }
+      } catch (err) {
+        console.warn('[MediaTracks] Failed to inspect tracks:', err);
+      }
+    }
+
+        function resetAudioAndSubtitleTracks() {
       currentAudioTracks = [];
       activeAudioTrackIndex = 0;
       currentSubtitleTracks = [];
@@ -3155,6 +3218,25 @@
         for (let i = 0; i < videoElement.audioTracks.length; i++) {
           videoElement.audioTracks[i].enabled = (i === idx);
         }
+      } else if (track.source === 'stream') {
+        // Stream-level audio track switching for MP4 / direct streams
+        const curTime = videoElement.currentTime;
+        const wasPaused = videoElement.paused;
+        playerLoading.classList.remove('hidden');
+
+        const cleanBaseUrl = currentPlayingProxyUrl.replace(/&audio_track=\d+/g, '');
+        const newUrl = cleanBaseUrl + (idx > 0 ? `&audio_track=${idx}` : '');
+        videoElement.src = newUrl;
+
+        videoElement.addEventListener('loadedmetadata', () => {
+          if (curTime > 0) {
+            videoElement.currentTime = curTime;
+          }
+          playerLoading.classList.add('hidden');
+          if (!wasPaused) {
+            videoElement.play().catch(e => console.warn('Resume play prevented:', e));
+          }
+        }, { once: true });
       }
 
       showOsd('🎵', `音轨: ${track.name}`, `已切换到第 ${idx + 1}/${currentAudioTracks.length} 条音轨`);

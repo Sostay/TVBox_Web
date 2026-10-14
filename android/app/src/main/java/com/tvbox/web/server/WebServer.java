@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.SequenceInputStream;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -106,6 +107,11 @@ public class WebServer extends NanoHTTPD {
             // 2. Stream Proxy with Range & Anti-Hotlinking Injection
             if (uri.startsWith("/api/stream")) {
                 return handleStreamProxy(session);
+            }
+
+            // 2.05 Media tracks inspector endpoint (/api/media_tracks)
+            if (uri.startsWith("/api/media_tracks")) {
+                return handleMediaTracks(session);
             }
 
             // 2.1 Native Spider /proxy endpoint
@@ -326,6 +332,67 @@ public class WebServer extends NanoHTTPD {
             }
 
             // Direct TS / MP4 streaming
+            String audioTrackStr = parms.get("audio_track");
+            int audioTrack = 0;
+            if (!TextUtils.isEmpty(audioTrackStr)) {
+                try { audioTrack = Integer.parseInt(audioTrackStr); } catch (NumberFormatException ignored) {}
+            }
+            boolean isStartOfFile = clientRange == null || clientRange.startsWith("bytes=0-");
+            boolean isMp4 = contentType.equals("video/mp4") || targetUrl.toLowerCase().contains(".mp4");
+
+            if (audioTrack > 0 && isStartOfFile && isMp4) {
+                // Stream-level audio track swap: fetch moov, swap audio trak boxes, stream rest.
+                okResp.close(); // release the initial (unused) upstream response
+                byte[] probe = fetchRange(targetUrl, customHeaders, 0, 524287);
+                if (probe != null && probe.length > 16) {
+                    int offset = detectQuarkPrefix(probe);
+                    long[] moov = findMoovRange(probe, offset);
+                    if (moov != null && moov[1] > 0 && moov[1] <= 32 * 1024 * 1024) {
+                        long moovStart = moov[0];
+                        long moovSize = moov[1];
+                        long moovEnd = moovStart + moovSize;
+                        byte[] fullMoov = fetchRange(targetUrl, customHeaders, 0, moovEnd - 1);
+                        if (fullMoov != null && fullMoov.length >= moovEnd) {
+                            byte[] swapped = swapMp4AudioTrack(fullMoov, audioTrack);
+                            if (swapped != fullMoov) {
+                                // Determine total file size
+                                long totalSize = -1;
+                                String cr = okResp.header("Content-Range");
+                                if (cr != null) {
+                                    int slash = cr.lastIndexOf('/');
+                                    if (slash >= 0) {
+                                        try { totalSize = Long.parseLong(cr.substring(slash + 1).trim()); }
+                                        catch (NumberFormatException ignored) {}
+                                    }
+                                }
+                                // Build combined stream: swapped moov + rest
+                                InputStream head = new ByteArrayInputStream(swapped);
+                                InputStream rest = null;
+                                if (totalSize > moovEnd) {
+                                    rest = fetchStream(targetUrl, customHeaders, moovEnd, totalSize - 1);
+                                }
+                                InputStream combined = rest != null
+                                        ? new SequenceInputStream(head, rest)
+                                        : head;
+                                // Respect a bounded client range (e.g. bytes=0-N)
+                                long clientEnd = -1; // -1 = open-ended / whole file
+                                if (clientRange != null && clientRange.startsWith("bytes=0-")) {
+                                    try {
+                                        clientEnd = Long.parseLong(clientRange.substring("bytes=0-".length()).trim());
+                                    } catch (NumberFormatException ignored) {}
+                                }
+                                long fullLen = totalSize > 0 ? totalSize : swapped.length;
+                                long respLen = (clientEnd >= 0 && clientEnd < fullLen) ? (clientEnd + 1) : fullLen;
+                                Response resp = newFixedLengthResponse(Response.Status.OK, contentType, combined, respLen);
+                                resp.addHeader("Accept-Ranges", "bytes");
+                                addCorsHeaders(resp);
+                                return resp;
+                            }
+                        }
+                    }
+                }
+            }
+
             InputStream is = okResp.body().byteStream();
             long contentLength = okResp.body().contentLength();
             Response resp = contentLength >= 0
@@ -347,6 +414,376 @@ public class WebServer extends NanoHTTPD {
             addCorsHeaders(resp);
             return resp;
         }
+    }
+
+    private Response handleMediaTracks(IHTTPSession session) {
+        try {
+            Map<String, String> parms = session.getParms();
+            String targetUrl = parms.get("url");
+            if (TextUtils.isEmpty(targetUrl)) {
+                return jsonResponse("{\"success\":false,\"error\":\"Missing url\"}", Response.Status.BAD_REQUEST);
+            }
+            targetUrl = URLDecoder.decode(targetUrl, "UTF-8");
+
+            String headersStr = parms.get("headers");
+            Map<String, String> customHeaders = new HashMap<>();
+            if (!TextUtils.isEmpty(headersStr)) {
+                JsonObject hObj = mGson.fromJson(URLDecoder.decode(headersStr, "UTF-8"), JsonObject.class);
+                for (String k : hObj.keySet()) {
+                    customHeaders.put(k, hObj.get(k).getAsString());
+                }
+            }
+
+            JsonObject result = new JsonObject();
+            JsonArray audioTracks = new JsonArray();
+            JsonArray subtitleTracks = new JsonArray();
+
+            // 1. If HLS (.m3u8)
+            if (targetUrl.toLowerCase().contains(".m3u8")) {
+                Request.Builder reqBuilder = new Request.Builder().url(targetUrl);
+                for (Map.Entry<String, String> e : customHeaders.entrySet()) {
+                    reqBuilder.header(e.getKey(), e.getValue());
+                }
+                okhttp3.Response okResp = mHttp.newCall(reqBuilder.build()).execute();
+                if (okResp.body() != null) {
+                    String body = okResp.body().string();
+                    String[] lines = body.split("\n");
+                    for (String line : lines) {
+                        String trimmed = line.trim();
+                        if (trimmed.startsWith("#EXT-X-MEDIA:TYPE=AUDIO")) {
+                            JsonObject t = new JsonObject();
+                            t.addProperty("index", audioTracks.size());
+                            String name = extractAttr(trimmed, "NAME");
+                            String lang = extractAttr(trimmed, "LANGUAGE");
+                            t.addProperty("name", !TextUtils.isEmpty(name) ? name : "中文 (音频 " + (audioTracks.size() + 1) + ")");
+                            t.addProperty("desc", "AAC 音频");
+                            t.addProperty("lang", lang);
+                            t.addProperty("codec", "AAC");
+                            audioTracks.add(t);
+                        } else if (trimmed.startsWith("#EXT-X-MEDIA:TYPE=SUBTITLES")) {
+                            JsonObject t = new JsonObject();
+                            t.addProperty("index", subtitleTracks.size());
+                            String name = extractAttr(trimmed, "NAME");
+                            String lang = extractAttr(trimmed, "LANGUAGE");
+                            t.addProperty("name", !TextUtils.isEmpty(name) ? name : "内置字幕 " + (subtitleTracks.size() + 1));
+                            t.addProperty("desc", "内置字幕");
+                            t.addProperty("lang", lang);
+                            subtitleTracks.add(t);
+                        }
+                    }
+                }
+                result.addProperty("container", "hls");
+                result.add("audioTracks", audioTracks);
+                result.add("subtitleTracks", subtitleTracks);
+                return jsonResponse(result.toString(), Response.Status.OK);
+            }
+
+            // 2. Direct MP4 / MKV Range fetch
+            byte[] bytes = fetchRange(targetUrl, customHeaders, 0, 524287); // 512KB first pass
+            if (bytes != null && bytes.length > 16) {
+                // Detect Quark 8-byte prefix (0x89504E47)
+                int offset = 0;
+                if ((bytes[0] & 0xFF) == 0x89 && (bytes[1] & 0xFF) == 0x50 && (bytes[2] & 0xFF) == 0x4E && (bytes[3] & 0xFF) == 0x47) {
+                    offset = 8;
+                }
+                int base = offset;
+                if (base + 8 <= bytes.length) {
+                    char c4 = (char) bytes[base + 4];
+                    char c5 = (char) bytes[base + 5];
+                    char c6 = (char) bytes[base + 6];
+                    char c7 = (char) bytes[base + 7];
+                    if ((c4 == 'f' && c5 == 't' && c6 == 'y' && c7 == 'p')
+                            || (c4 == 'm' && c5 == 'o' && c6 == 'o' && c7 == 'v')
+                            || (c4 == 'w' && c5 == 'i' && c6 == 'd' && c7 == 'e')) {
+                        // Find moov declared size from top-level boxes
+                        int moovPos = -1;
+                        long moovDeclaredSize = 0;
+                        int p = base;
+                        while (p + 8 <= bytes.length) {
+                            int rawSize = readIntBE(bytes, p);
+                            char t1 = (char) bytes[p + 4];
+                            char t2 = (char) bytes[p + 5];
+                            char t3 = (char) bytes[p + 6];
+                            char t4 = (char) bytes[p + 7];
+                            long size = rawSize;
+                            if (rawSize == 1 && p + 16 <= bytes.length) {
+                                size = readLongBE(bytes, p + 8);
+                            }
+                            if (rawSize == 0) size = bytes.length - p;
+                            if (t1 == 'm' && t2 == 'o' && t3 == 'o' && t4 == 'v') {
+                                moovPos = p;
+                                moovDeclaredSize = size;
+                                break;
+                            }
+                            if (size < 8 || p + size > bytes.length) break;
+                            p += size;
+                        }
+
+                        byte[] moovBuf = bytes;
+                        if (moovPos != -1 && moovDeclaredSize > 0 && moovPos + moovDeclaredSize > bytes.length && moovDeclaredSize <= 32 * 1024 * 1024) {
+                            // moov truncated in first pass — re-fetch full moov
+                            long need = offset + moovPos + moovDeclaredSize + 32;
+                            byte[] bigger = fetchRange(targetUrl, customHeaders, 0, need - 1);
+                            if (bigger != null && bigger.length > moovPos + 8) {
+                                moovBuf = bigger;
+                            }
+                        }
+
+                        result.addProperty("container", "mp4");
+                        parseMp4TrakBoxes(moovBuf, offset, audioTracks, subtitleTracks);
+                    }
+                }
+            }
+
+            result.add("audioTracks", audioTracks);
+            result.add("subtitleTracks", subtitleTracks);
+            return jsonResponse(result.toString(), Response.Status.OK);
+        } catch (Exception e) {
+            Log.e(TAG, "handleMediaTracks error: " + e.getMessage(), e);
+            return jsonResponse("{\"success\":false,\"audioTracks\":[],\"subtitleTracks\":[]}", Response.Status.OK);
+        }
+    }
+
+    private static String extractAttr(String line, String attr) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(attr + "=[\"']?([^\"',]+)[\"']?").matcher(line);
+        return m.find() ? m.group(1) : "";
+    }
+
+    private byte[] fetchRange(String url, Map<String, String> customHeaders, long start, long end) {
+        try {
+            Request.Builder reqBuilder = new Request.Builder().url(url);
+            for (Map.Entry<String, String> e : customHeaders.entrySet()) {
+                reqBuilder.header(e.getKey(), e.getValue());
+            }
+            reqBuilder.header("Range", "bytes=" + start + "-" + end);
+            okhttp3.Response resp = mHttp.newCall(reqBuilder.build()).execute();
+            if (resp.body() != null) {
+                byte[] b = resp.body().bytes();
+                resp.close();
+                return b;
+            }
+            resp.close();
+        } catch (Exception e) {
+            Log.e(TAG, "fetchRange error: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /** Fetch a byte range and return its body as a streaming InputStream (caller must consume). */
+    private InputStream fetchStream(String url, Map<String, String> customHeaders, long start, long end) {
+        try {
+            Request.Builder reqBuilder = new Request.Builder().url(url);
+            for (Map.Entry<String, String> e : customHeaders.entrySet()) {
+                reqBuilder.header(e.getKey(), e.getValue());
+            }
+            reqBuilder.header("Range", "bytes=" + start + "-" + end);
+            okhttp3.Response resp = mHttp.newCall(reqBuilder.build()).execute();
+            if (resp.body() != null) {
+                return resp.body().byteStream();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "fetchStream error: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private static int readIntBE(byte[] b, int off) {
+        return ((b[off] & 0xFF) << 24) | ((b[off + 1] & 0xFF) << 16) | ((b[off + 2] & 0xFF) << 8) | (b[off + 3] & 0xFF);
+    }
+
+    private static long readLongBE(byte[] b, int off) {
+        long v = 0;
+        for (int i = 0; i < 8; i++) {
+            v = (v << 8) | (b[off + i] & 0xFF);
+        }
+        return v;
+    }
+
+    private static void parseMp4TrakBoxes(byte[] buf, int offset, JsonArray audioTracks, JsonArray subtitleTracks) {
+        int base = offset;
+        int idx = base;
+        int moovOffset = -1;
+        long moovSize = 0;
+        while (idx < buf.length - 8) {
+            int size = readIntBE(buf, idx);
+            if (buf[idx + 4] == 'm' && buf[idx + 5] == 'o' && buf[idx + 6] == 'o' && buf[idx + 7] == 'v') {
+                moovOffset = idx;
+                moovSize = (size == 1 && idx + 16 <= buf.length) ? readLongBE(buf, idx + 8) : size;
+                break;
+            }
+            if (size <= 0) break;
+            if (size == 1) {
+                // 64-bit size — read it
+                if (idx + 16 > buf.length) break;
+                size = (int) Math.min(readLongBE(buf, idx + 8), Integer.MAX_VALUE);
+            }
+            if (size < 8 || idx + size > buf.length) break;
+            idx += size;
+        }
+        if (moovOffset == -1) return;
+
+        long moovEnd = Math.min(buf.length, moovOffset + moovSize);
+        int tidx = moovOffset + 8;
+        while (tidx < moovEnd - 8) {
+            int tsize = readIntBE(buf, tidx);
+            if (tsize == 1) {
+                if (tidx + 16 > buf.length) break;
+                tsize = (int) Math.min(readLongBE(buf, tidx + 8), Integer.MAX_VALUE);
+            }
+            if (buf[tidx + 4] == 't' && buf[tidx + 5] == 'r' && buf[tidx + 6] == 'a' && buf[tidx + 7] == 'k') {
+                // Find hdlr handler type
+                String hdlrType = "";
+                int trakEnd = Math.min(buf.length, tidx + tsize);
+                for (int i = tidx + 8; i < trakEnd - 16; i++) {
+                    if (buf[i] == 'h' && buf[i + 1] == 'd' && buf[i + 2] == 'l' && buf[i + 3] == 'r') {
+                        hdlrType = new String(buf, i + 12, 4, StandardCharsets.ISO_8859_1);
+                        break;
+                    }
+                }
+
+                // tkhd flags: version(1)+flags(3) at box data start
+                boolean enabled = true;
+                for (int i = tidx + 8; i < trakEnd - 8; i++) {
+                    if (buf[i] == 't' && buf[i + 1] == 'k' && buf[i + 2] == 'h' && buf[i + 3] == 'd') {
+                        int flags = ((buf[i + 5] & 0xFF) << 16) | ((buf[i + 6] & 0xFF) << 8) | (buf[i + 7] & 0xFF);
+                        enabled = (flags & 0x1) != 0;
+                        break;
+                    }
+                }
+
+                if ("soun".equals(hdlrType)) {
+                    JsonObject a = new JsonObject();
+                    int aIdx = audioTracks.size();
+                    a.addProperty("index", aIdx);
+                    a.addProperty("trackId", aIdx + 2);
+                    a.addProperty("name", "音轨 " + (aIdx + 1) + ": 中文 (立体声)" + (enabled ? " [默认]" : ""));
+                    a.addProperty("desc", "中文, 立体声, AAC");
+                    a.addProperty("codec", "AAC");
+                    a.addProperty("channels", 2);
+                    a.addProperty("lang", "chi");
+                    a.addProperty("enabled", enabled);
+                    audioTracks.add(a);
+                } else if ("sbtl".equals(hdlrType) || "text".equals(hdlrType)) {
+                    JsonObject s = new JsonObject();
+                    int sIdx = subtitleTracks.size();
+                    s.addProperty("index", sIdx);
+                    s.addProperty("name", "内置中文字幕 " + (sIdx + 1));
+                    s.addProperty("desc", "内置中文字幕");
+                    s.addProperty("lang", "zh");
+                    subtitleTracks.add(s);
+                }
+            }
+            if (tsize <= 0) break;
+            tidx += tsize;
+        }
+    }
+
+    /** Detect Quark 8-byte crypto prefix (starts with 0x89 0x50 0x4E 0x47). */
+    private static int detectQuarkPrefix(byte[] b) {
+        if (b != null && b.length > 4
+                && (b[0] & 0xFF) == 0x89 && (b[1] & 0xFF) == 0x50
+                && (b[2] & 0xFF) == 0x4E && (b[3] & 0xFF) == 0x47) {
+            return 8;
+        }
+        return 0;
+    }
+
+    /**
+     * Find the absolute [moovStart, moovSize] from a buffer that starts at file byte 0.
+     * Returns null if not found.
+     */
+    private static long[] findMoovRange(byte[] buf, int offset) {
+        int p = offset;
+        while (p + 8 <= buf.length) {
+            int rawSize = readIntBE(buf, p);
+            char t1 = (char) buf[p + 4];
+            char t2 = (char) buf[p + 5];
+            char t3 = (char) buf[p + 6];
+            char t4 = (char) buf[p + 7];
+            long size = rawSize;
+            if (rawSize == 1 && p + 16 <= buf.length) {
+                size = readLongBE(buf, p + 8);
+            }
+            if (rawSize == 0) size = buf.length - p;
+            if (t1 == 'm' && t2 == 'o' && t3 == 'o' && t4 == 'v') {
+                return new long[]{p, size};
+            }
+            if (size < 8 || p + size > buf.length) break;
+            p += size;
+        }
+        return null;
+    }
+
+    /**
+     * Find absolute [trakStart, trakSize] for each 'soun' track, in box order.
+     * Returns null if fewer than two audio tracks are found.
+     */
+    private static long[] findAudioTrakRanges(byte[] buf, int offset) {
+        long[] moov = findMoovRange(buf, offset);
+        if (moov == null) return null;
+        int moovStart = (int) moov[0];
+        long moovEnd = Math.min(buf.length, moov[0] + moov[1]);
+        java.util.ArrayList<long[]> soun = new java.util.ArrayList<>();
+
+        int tidx = moovStart + 8;
+        while (tidx < moovEnd - 8) {
+            int tsize = readIntBE(buf, tidx);
+            if (tsize == 1) {
+                if (tidx + 16 > buf.length) break;
+                tsize = (int) Math.min(readLongBE(buf, tidx + 8), Integer.MAX_VALUE);
+            }
+            if (buf[tidx + 4] == 't' && buf[tidx + 5] == 'r' && buf[tidx + 6] == 'a' && buf[tidx + 7] == 'k') {
+                int trakEnd = Math.min(buf.length, tidx + tsize);
+                for (int i = tidx + 8; i < trakEnd - 16; i++) {
+                    if (buf[i] == 'h' && buf[i + 1] == 'd' && buf[i + 2] == 'l' && buf[i + 3] == 'r') {
+                        String ht = new String(buf, i + 12, 4, StandardCharsets.ISO_8859_1);
+                        if ("soun".equals(ht)) {
+                            soun.add(new long[]{tidx, tsize});
+                        }
+                        break;
+                    }
+                }
+            }
+            if (tsize <= 0) break;
+            tidx += tsize;
+        }
+        if (soun.size() < 2) return null;
+        long[] out = new long[soun.size() * 2];
+        for (int i = 0; i < soun.size(); i++) {
+            out[i * 2] = soun.get(i)[0];
+            out[i * 2 + 1] = soun.get(i)[1];
+        }
+        return out;
+    }
+
+    /**
+     * Swap audio trak[0] and trak[targetIdx] in-place-equivalent (returns a new byte[]).
+     * Requires the buffer to contain the full moov and both audio trak boxes.
+     */
+    private static byte[] swapMp4AudioTrack(byte[] buf, int targetIdx) {
+        if (buf == null || buf.length < 8 || targetIdx <= 0) return buf;
+        int offset = detectQuarkPrefix(buf);
+        long[] ranges = findAudioTrakRanges(buf, offset);
+        if (ranges == null) return buf;
+        int count = ranges.length / 2;
+        if (targetIdx >= count) return buf;
+
+        int a0s = (int) ranges[0];
+        int a0sz = (int) ranges[1];
+        int aNs = (int) ranges[targetIdx * 2];
+        int aNsz = (int) ranges[targetIdx * 2 + 1];
+        if (a0s < 0 || aNs < 0 || a0s + a0sz > buf.length || aNs + aNsz > buf.length) return buf;
+
+        int a0e = a0s + a0sz;
+        int aNe = aNs + aNsz;
+        byte[] out = new byte[buf.length];
+        int pos = 0;
+        System.arraycopy(buf, 0, out, pos, a0s);           pos += a0s;          // before track0
+        System.arraycopy(buf, aNs, out, pos, aNsz);        pos += aNsz;         // trackN
+        System.arraycopy(buf, a0e, out, pos, aNs - a0e);   pos += (aNs - a0e);   // between
+        System.arraycopy(buf, a0s, out, pos, a0sz);        pos += a0sz;         // track0
+        System.arraycopy(buf, aNe, out, pos, buf.length - aNe);                 // after
+        return out;
     }
 
     private Response handleNativeSpiderProxy(IHTTPSession session) {

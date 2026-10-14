@@ -8,6 +8,7 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { inspectMediaTracks, swapMp4AudioTrack } = require('./lib/media-inspector');
 
 const PORT = 8999;
 const BACKEND_PORT = 9988;
@@ -163,6 +164,65 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
     if (proxyRes.headers['accept-ranges']) resHeaders['Accept-Ranges'] = proxyRes.headers['accept-ranges'];
 
     res.writeHead(proxyRes.statusCode, resHeaders);
+
+    const reqUrlObj = new URL(req.url, 'http://127.0.0.1:8999');
+    const targetAudioTrack = parseInt(reqUrlObj.searchParams.get('audio_track') || '0', 10);
+    const rangeHeader = req.headers.range || '';
+    const isStartOfFile = !rangeHeader || rangeHeader.startsWith('bytes=0-');
+
+    if (targetAudioTrack > 0 && isStartOfFile && (contentTypeHeader === 'video/mp4' || targetUrl.includes('.mp4') || !isM3u8)) {
+      let initialChunks = [];
+      let totalBytes = 0;
+      let intercepted = false;
+      let targetScanBytes = 8 * 1024 * 1024; // default 8MB
+      let detectedMoov = false;
+
+      proxyRes.on('data', (chunk) => {
+        if (!intercepted) {
+          initialChunks.push(chunk);
+          totalBytes += chunk.length;
+
+          // Detect moov size early to avoid buffering more than needed or underbuffering
+          if (!detectedMoov && totalBytes >= 64) {
+            const probe = Buffer.concat(initialChunks);
+            const prefix = (probe.toString('hex', 0, 4) === '89504e47') ? 8 : 0;
+            let p = prefix;
+            while (p + 8 <= probe.length) {
+              const sz = probe.readUInt32BE(p);
+              const ty = probe.toString('latin1', p + 4, p + 8);
+              if (ty === 'moov') {
+                detectedMoov = true;
+                targetScanBytes = Math.min(p + sz + 64, 16 * 1024 * 1024);
+                break;
+              }
+              if (sz <= 0 || p + sz > probe.length) break;
+              p += sz;
+            }
+          }
+
+          if (totalBytes >= targetScanBytes) {
+            intercepted = true;
+            const fullBuf = Buffer.concat(initialChunks);
+            const modified = swapMp4AudioTrack(fullBuf, targetAudioTrack);
+            res.write(modified);
+            initialChunks = null;
+          }
+        } else {
+          res.write(chunk);
+        }
+      });
+
+      proxyRes.on('end', () => {
+        if (!intercepted && initialChunks && initialChunks.length > 0) {
+          const fullBuf = Buffer.concat(initialChunks);
+          const modified = swapMp4AudioTrack(fullBuf, targetAudioTrack);
+          res.write(modified);
+        }
+        res.end();
+      });
+      return;
+    }
+
     proxyRes.pipe(res);
   });
 
@@ -280,6 +340,36 @@ const server = http.createServer((req, res) => {
       return res.end('Missing url parameter');
     }
     return handleStreamProxy(req, res, target, headersStr);
+  }
+
+  // Stream media tracks inspection (Audio & Subtitle tracks in MP4 / MKV / HLS)
+  if (pathname === '/api/media_tracks') {
+    const target = parsedUrl.searchParams.get('url');
+    const headersStr = parsedUrl.searchParams.get('headers');
+    if (!target) {
+      res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      return res.end(JSON.stringify({ error: 'Missing url parameter' }));
+    }
+
+    let headers = {};
+    if (headersStr) {
+      try { headers = JSON.parse(headersStr); } catch (e) {}
+    }
+
+    inspectMediaTracks(target, headers).then((meta) => {
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(JSON.stringify(meta));
+    }).catch((err) => {
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(JSON.stringify({ success: false, audioTracks: [], subtitleTracks: [], error: err.message }));
+    });
+    return;
   }
 
   // Fetch external JSON config (e.g. user subscribed json)
