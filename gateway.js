@@ -166,11 +166,14 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
     res.writeHead(proxyRes.statusCode, resHeaders);
 
     const reqUrlObj = new URL(req.url, 'http://127.0.0.1:8999');
-    const targetAudioTrack = parseInt(reqUrlObj.searchParams.get('audio_track') || '0', 10);
+    const hasAudioTrackParam = reqUrlObj.searchParams.has('audio_track');
+    const targetAudioTrack = hasAudioTrackParam
+      ? parseInt(reqUrlObj.searchParams.get('audio_track'), 10)
+      : -1;
     const rangeHeader = req.headers.range || '';
     const isStartOfFile = !rangeHeader || rangeHeader.startsWith('bytes=0-');
 
-    if (targetAudioTrack > 0 && isStartOfFile && (contentTypeHeader === 'video/mp4' || targetUrl.includes('.mp4') || !isM3u8)) {
+    if (hasAudioTrackParam && targetAudioTrack >= 0 && isStartOfFile && (contentTypeHeader === 'video/mp4' || targetUrl.includes('.mp4') || !isM3u8)) {
       let initialChunks = [];
       let totalBytes = 0;
       let intercepted = false;

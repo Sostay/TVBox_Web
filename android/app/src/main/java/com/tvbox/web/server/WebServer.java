@@ -333,14 +333,15 @@ public class WebServer extends NanoHTTPD {
 
             // Direct TS / MP4 streaming
             String audioTrackStr = parms.get("audio_track");
-            int audioTrack = 0;
-            if (!TextUtils.isEmpty(audioTrackStr)) {
+            boolean hasAudioTrack = !TextUtils.isEmpty(audioTrackStr);
+            int audioTrack = -1;
+            if (hasAudioTrack) {
                 try { audioTrack = Integer.parseInt(audioTrackStr); } catch (NumberFormatException ignored) {}
             }
             boolean isStartOfFile = clientRange == null || clientRange.startsWith("bytes=0-");
             boolean isMp4 = contentType.equals("video/mp4") || targetUrl.toLowerCase().contains(".mp4");
 
-            if (audioTrack > 0 && isStartOfFile && isMp4) {
+            if (hasAudioTrack && audioTrack >= 0 && isStartOfFile && isMp4) {
                 // Stream-level audio track swap: fetch moov, swap audio trak boxes, stream rest.
                 okResp.close(); // release the initial (unused) upstream response
                 byte[] probe = fetchRange(targetUrl, customHeaders, 0, 524287);
@@ -715,7 +716,7 @@ public class WebServer extends NanoHTTPD {
     }
 
     /**
-     * Find absolute [trakStart, trakSize] for each 'soun' track, in box order.
+     * Find [trakStart, trakSize, tkhdFlagsOffset] for each 'soun' track, in box order.
      * Returns null if fewer than two audio tracks are found.
      */
     private static long[] findAudioTrakRanges(byte[] buf, int offset) {
@@ -734,55 +735,89 @@ public class WebServer extends NanoHTTPD {
             }
             if (buf[tidx + 4] == 't' && buf[tidx + 5] == 'r' && buf[tidx + 6] == 'a' && buf[tidx + 7] == 'k') {
                 int trakEnd = Math.min(buf.length, tidx + tsize);
-                for (int i = tidx + 8; i < trakEnd - 16; i++) {
-                    if (buf[i] == 'h' && buf[i + 1] == 'd' && buf[i + 2] == 'l' && buf[i + 3] == 'r') {
-                        String ht = new String(buf, i + 12, 4, StandardCharsets.ISO_8859_1);
-                        if ("soun".equals(ht)) {
-                            soun.add(new long[]{tidx, tsize});
-                        }
-                        break;
+                boolean isSoun = false;
+                int tkhdFlagsOffset = -1;
+                int cpos = tidx + 8;
+                while (cpos < trakEnd - 8) {
+                    int csize = readIntBE(buf, cpos);
+                    if (csize == 1) {
+                        if (cpos + 16 > buf.length) break;
+                        csize = (int) Math.min(readLongBE(buf, cpos + 8), Integer.MAX_VALUE);
                     }
+                    if (buf[cpos + 4] == 't' && buf[cpos + 5] == 'k' && buf[cpos + 6] == 'h' && buf[cpos + 7] == 'd') {
+                        // tkhd: size(4)+type(4)+version(1)+flags(3); enabled bit = LSB of flags byte 3 = cpos + 11
+                        if (cpos + 11 < buf.length) tkhdFlagsOffset = cpos + 11;
+                    } else if (buf[cpos + 4] == 'h' && buf[cpos + 5] == 'd' && buf[cpos + 6] == 'l' && buf[cpos + 7] == 'r') {
+                        // hdlr: size(4)+type(4)+version(1)+flags(3)+pre_defined(4)+handler_type(4)
+                        if (cpos + 20 <= buf.length) {
+                            String ht = new String(buf, cpos + 16, 4, StandardCharsets.ISO_8859_1);
+                            isSoun = "soun".equals(ht);
+                        }
+                    }
+                    if (csize <= 0) break;
+                    cpos += csize;
+                }
+                if (isSoun) {
+                    soun.add(new long[]{tidx, tsize, tkhdFlagsOffset});
                 }
             }
             if (tsize <= 0) break;
             tidx += tsize;
         }
         if (soun.size() < 2) return null;
-        long[] out = new long[soun.size() * 2];
+        long[] out = new long[soun.size() * 3];
         for (int i = 0; i < soun.size(); i++) {
-            out[i * 2] = soun.get(i)[0];
-            out[i * 2 + 1] = soun.get(i)[1];
+            out[i * 3] = soun.get(i)[0];
+            out[i * 3 + 1] = soun.get(i)[1];
+            out[i * 3 + 2] = soun.get(i)[2];
         }
         return out;
     }
 
     /**
-     * Swap audio trak[0] and trak[targetIdx] in-place-equivalent (returns a new byte[]).
-     * Requires the buffer to contain the full moov and both audio trak boxes.
+     * Force audio track[targetIdx] to be the one the browser plays, for both Chromium
+     * (respects the tkhd enabled flag) and Gecko (plays the first audio trak).
+     * 1) set enabled flag only on the target track, 2) move the target trak to the front.
      */
     private static byte[] swapMp4AudioTrack(byte[] buf, int targetIdx) {
-        if (buf == null || buf.length < 8 || targetIdx <= 0) return buf;
+        if (buf == null || buf.length < 8 || targetIdx < 0) return buf;
         int offset = detectQuarkPrefix(buf);
         long[] ranges = findAudioTrakRanges(buf, offset);
         if (ranges == null) return buf;
-        int count = ranges.length / 2;
+        int count = ranges.length / 3;
         if (targetIdx >= count) return buf;
 
-        int a0s = (int) ranges[0];
-        int a0sz = (int) ranges[1];
-        int aNs = (int) ranges[targetIdx * 2];
-        int aNsz = (int) ranges[targetIdx * 2 + 1];
-        if (a0s < 0 || aNs < 0 || a0s + a0sz > buf.length || aNs + aNsz > buf.length) return buf;
-
-        int a0e = a0s + a0sz;
-        int aNe = aNs + aNsz;
         byte[] out = new byte[buf.length];
-        int pos = 0;
-        System.arraycopy(buf, 0, out, pos, a0s);           pos += a0s;          // before track0
-        System.arraycopy(buf, aNs, out, pos, aNsz);        pos += aNsz;         // trackN
-        System.arraycopy(buf, a0e, out, pos, aNs - a0e);   pos += (aNs - a0e);   // between
-        System.arraycopy(buf, a0s, out, pos, a0sz);        pos += a0sz;         // track0
-        System.arraycopy(buf, aNe, out, pos, buf.length - aNe);                 // after
+        System.arraycopy(buf, 0, out, 0, buf.length);
+
+        // 1. Rewrite enabled flags: only the target audio track stays enabled.
+        for (int i = 0; i < count; i++) {
+            int flagsOff = (int) ranges[i * 3 + 2];
+            if (flagsOff < 0 || flagsOff >= out.length) continue;
+            if (i == targetIdx) out[flagsOff] |= 0x01;
+            else               out[flagsOff] &= 0xFE;
+        }
+
+        // 2. Move the target trak to the front.
+        if (targetIdx > 0) {
+            int a0s = (int) ranges[0];
+            int a0sz = (int) ranges[1];
+            int aNs = (int) ranges[targetIdx * 3];
+            int aNsz = (int) ranges[targetIdx * 3 + 1];
+            if (a0s < 0 || aNs < 0 || a0s + a0sz > out.length || aNs + aNsz > out.length) return buf;
+
+            int a0e = a0s + a0sz;
+            int aNe = aNs + aNsz;
+            byte[] swapped = new byte[out.length];
+            int pos = 0;
+            System.arraycopy(out, 0, swapped, pos, a0s);           pos += a0s;          // before track0
+            System.arraycopy(out, aNs, swapped, pos, aNsz);        pos += aNsz;         // trackN
+            System.arraycopy(out, a0e, swapped, pos, aNs - a0e);   pos += (aNs - a0e);   // between
+            System.arraycopy(out, a0s, swapped, pos, a0sz);        pos += a0sz;         // track0
+            System.arraycopy(out, aNe, swapped, pos, out.length - aNe);                 // after
+            out = swapped;
+        }
+
         return out;
     }
 

@@ -828,6 +828,7 @@
     let currentPlayingStreamUrl = '';
     let currentPlayingCustomHeaders = '';
     let currentPlayingProxyUrl = '';
+    let streamTrackForceApplied = false;
     let hlsInstance = null;
     let isWebFullscreen = false;
     let isDescriptionExpanded = false;
@@ -3011,11 +3012,20 @@
             codec: t.codec || '',
             lang: t.lang || '',
             channels: t.channels || 2,
-            default: (i === 0),
+            default: !!t.enabled,
             source: 'stream'
           }));
-          activeAudioTrackIndex = 0;
+          // Default = the track marked enabled in tkhd (matches Chromium's natural choice)
+          const enabledIdx = currentAudioTracks.findIndex(t => t.default);
+          activeAudioTrackIndex = enabledIdx >= 0 ? enabledIdx : 0;
           renderAudioTrackMenu();
+
+          // Force the default track explicitly so Chromium and Gecko agree on the
+          // initial audio track (Gecko plays the first trak, Chromium the enabled one).
+          if (currentAudioTracks.length > 1 && !streamTrackForceApplied) {
+            streamTrackForceApplied = true;
+            switchStreamAudioTrack(activeAudioTrackIndex);
+          }
           console.log('[MediaTracks] Successfully parsed stream audio tracks:', currentAudioTracks);
         }
 
@@ -3051,6 +3061,7 @@
       activeAudioTrackIndex = 0;
       currentSubtitleTracks = [];
       activeSubtitleTrackIndex = -1;
+      streamTrackForceApplied = false;
       closeAudioTrackPopover();
       closeSubtitlePopover();
       const oldTracks = videoElement.querySelectorAll('track.custom-dynamic-sub-track');
@@ -3207,6 +3218,31 @@
       });
     }
 
+    // Reload the stream proxy URL with `&audio_track=N` so the gateway rewrites the
+    // moov to force that track (works for both Chromium and Gecko).
+    function switchStreamAudioTrack(idx) {
+      if (!currentPlayingProxyUrl) return;
+      const curTime = videoElement.currentTime;
+      const wasPaused = videoElement.paused;
+      playerLoading.classList.remove('hidden');
+
+      const cleanBaseUrl = currentPlayingProxyUrl.replace(/[&?]audio_track=\d+/g, '');
+      const sep = cleanBaseUrl.includes('?') ? '&' : '?';
+      const newUrl = cleanBaseUrl + sep + `audio_track=${idx}`;
+      if (videoElement.src === newUrl) return;
+      videoElement.src = newUrl;
+
+      videoElement.addEventListener('loadedmetadata', () => {
+        if (curTime > 0) {
+          videoElement.currentTime = curTime;
+        }
+        playerLoading.classList.add('hidden');
+        if (!wasPaused) {
+          videoElement.play().catch(e => console.warn('Resume play prevented:', e));
+        }
+      }, { once: true });
+    }
+
     function selectAudioTrack(idx) {
       if (!currentAudioTracks[idx]) return;
       activeAudioTrackIndex = idx;
@@ -3219,24 +3255,7 @@
           videoElement.audioTracks[i].enabled = (i === idx);
         }
       } else if (track.source === 'stream') {
-        // Stream-level audio track switching for MP4 / direct streams
-        const curTime = videoElement.currentTime;
-        const wasPaused = videoElement.paused;
-        playerLoading.classList.remove('hidden');
-
-        const cleanBaseUrl = currentPlayingProxyUrl.replace(/&audio_track=\d+/g, '');
-        const newUrl = cleanBaseUrl + (idx > 0 ? `&audio_track=${idx}` : '');
-        videoElement.src = newUrl;
-
-        videoElement.addEventListener('loadedmetadata', () => {
-          if (curTime > 0) {
-            videoElement.currentTime = curTime;
-          }
-          playerLoading.classList.add('hidden');
-          if (!wasPaused) {
-            videoElement.play().catch(e => console.warn('Resume play prevented:', e));
-          }
-        }, { once: true });
+        switchStreamAudioTrack(idx);
       }
 
       showOsd('🎵', `音轨: ${track.name}`, `已切换到第 ${idx + 1}/${currentAudioTracks.length} 条音轨`);
