@@ -1,4 +1,3 @@
 @echo off
-chcp 65001 >nul
 cd /d "%~dp0"
-call "%~dp0修复端口占用.bat"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0fix_port.ps1"
