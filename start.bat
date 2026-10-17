@@ -71,7 +71,7 @@ pause
 exit /b 1
 
 :CHECK_PORT
-:: 4. 检查 8999 端口是否已被占用
+:: 4. 检查 8999 端口是否已被占用或被系统保留
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$c = Get-NetTCPConnection -LocalPort 8999 -State Listen -ErrorAction SilentlyContinue; if ($c) { exit 10 } else { exit 0 }" >nul 2>nul
 if %errorlevel% equ 10 (
     echo.
@@ -79,6 +79,22 @@ if %errorlevel% equ 10 (
     echo        * Web 观影地址: http://127.0.0.1:8999
     echo        * 如需重启服务，请先双击运行 stop.bat
     echo.
+)
+
+:: 4.1 检查 8999 端口是否落入 Windows Hyper-V/WinNAT 动态保留排他段 (EACCES)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ex = [bool](netsh interface ipv4 show excludedportrange protocol=tcp | Select-String '^\s*(\d+)\s+(\d+)' | Where-Object { $m = [regex]::Match($_, '^\s*(\d+)\s+(\d+)'); if ($m.Success) { $s = [int]$m.Groups[1].Value; $e = [int]$m.Groups[2].Value; 8999 -ge $s -and 8999 -le $e } }); if ($ex) { exit 20 } else { exit 0 }" >nul 2>nul
+if %errorlevel% equ 20 (
+    echo.
+    echo ========================================================
+    echo  【端口冲突警告】端口 8999 被 Windows 系统 (Hyper-V/WinNAT) 独占保留！
+    echo ========================================================
+    echo  由于 Windows 开机动态保留了 8913-9012 端口段，Node 网关无法绑定 8999。
+    echo.
+    echo  【一键解决】双击运行项目目录下的【修复端口占用.bat】即可自动释放！
+    echo ========================================================
+    echo.
+    pause
+    exit /b 1
 )
 
 :: 5. 打印就绪信息并打开浏览器

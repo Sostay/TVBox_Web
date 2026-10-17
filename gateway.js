@@ -461,6 +461,26 @@ async function main() {
     console.error('[Gateway] Warning: Backend readiness check timed out:', err.message);
   }
 
+  server.on('error', (err) => {
+    if (err.code === 'EACCES') {
+      console.error(`\n======================================================`);
+      console.error(`❌ [端口冲突错误] 无法绑定端口 ${PORT} (EACCES 权限被拒绝)！`);
+      console.error(`原因：Windows Hyper-V / WSL / WinNAT 动态端口池占用了 ${PORT} 端口。`);
+      console.error(`解决办法：`);
+      console.error(`  1. 双击运行项目目录下的【修复端口占用.bat】自动释放并修复；`);
+      console.error(`  2. 或以管理员身份打开 CMD 执行：net stop winnat && net start winnat`);
+      console.error(`======================================================\n`);
+    } else if (err.code === 'EADDRINUSE') {
+      console.error(`\n======================================================`);
+      console.error(`❌ [端口冲突错误] 端口 ${PORT} 已被其他程序占用 (EADDRINUSE)！`);
+      console.error(`解决办法：请先双击运行 stop.bat 关闭残留进程后重试。`);
+      console.error(`======================================================\n`);
+    } else {
+      console.error('[Gateway] Server error:', err.message);
+    }
+    process.exit(1);
+  });
+
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n======================================================`);
     console.log(`🚀 TVBox Web Gateway running at http://127.0.0.1:${PORT}`);
