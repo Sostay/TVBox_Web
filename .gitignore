@@ -61,6 +61,9 @@ start_silent.bat
 start_silent.vbs
 stop.bat
 stop.ps1
+fix_port.bat
+fix_port.ps1
+修复端口占用.bat
 
 # 8. Research Docs
 docs/
