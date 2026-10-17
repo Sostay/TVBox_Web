@@ -340,13 +340,48 @@ public class WebServer extends NanoHTTPD {
             }
             boolean isStartOfFile = clientRange == null || clientRange.startsWith("bytes=0-");
             boolean isMp4 = contentType.equals("video/mp4") || targetUrl.toLowerCase().contains(".mp4");
+            boolean isStreamEligible = isMp4 || contentType.equals("video/x-matroska") || targetUrl.toLowerCase().contains(".mkv") || !isM3u8;
 
-            if (hasAudioTrack && audioTrack >= 0 && isStartOfFile && isMp4) {
-                // Stream-level audio track swap: fetch moov, swap audio trak boxes, stream rest.
+            if (hasAudioTrack && audioTrack >= 0 && isStartOfFile && isStreamEligible) {
+                // Stream-level audio track swap: fetch probe, swap audio track boxes, stream rest.
                 okResp.close(); // release the initial (unused) upstream response
                 byte[] probe = fetchRange(targetUrl, customHeaders, 0, 524287);
                 if (probe != null && probe.length > 16) {
                     int offset = detectQuarkPrefix(probe);
+
+                    // Check MKV (EBML 0x1A45DFA3)
+                    if (offset + 4 <= probe.length
+                            && (probe[offset] & 0xFF) == 0x1A
+                            && (probe[offset + 1] & 0xFF) == 0x45
+                            && (probe[offset + 2] & 0xFF) == 0xDF
+                            && (probe[offset + 3] & 0xFF) == 0xA3) {
+                        byte[] swapped = swapMkvAudioTrack(probe, audioTrack);
+                        long totalSize = -1;
+                        String cr = okResp.header("Content-Range");
+                        if (cr != null) {
+                            int slash = cr.lastIndexOf('/');
+                            if (slash >= 0) {
+                                try { totalSize = Long.parseLong(cr.substring(slash + 1).trim()); } catch (Exception ignored) {}
+                            }
+                        }
+                        InputStream head = new ByteArrayInputStream(swapped);
+                        InputStream rest = null;
+                        if (totalSize > swapped.length) {
+                            rest = fetchStream(targetUrl, customHeaders, swapped.length, totalSize - 1);
+                        }
+                        InputStream combined = rest != null ? new SequenceInputStream(head, rest) : head;
+                        long clientEnd = -1;
+                        if (clientRange != null && clientRange.startsWith("bytes=0-")) {
+                            try { clientEnd = Long.parseLong(clientRange.substring("bytes=0-".length()).trim()); } catch (Exception ignored) {}
+                        }
+                        long fullLen = totalSize > 0 ? totalSize : swapped.length;
+                        long respLen = (clientEnd >= 0 && clientEnd < fullLen) ? (clientEnd + 1) : fullLen;
+                        Response resp = newFixedLengthResponse(Response.Status.OK, "video/x-matroska", combined, respLen);
+                        resp.addHeader("Accept-Ranges", "bytes");
+                        addCorsHeaders(resp);
+                        return resp;
+                    }
+
                     long[] moov = findMoovRange(probe, offset);
                     if (moov != null && moov[1] > 0 && moov[1] <= 32 * 1024 * 1024) {
                         long moovStart = moov[0];
@@ -489,49 +524,56 @@ public class WebServer extends NanoHTTPD {
                 }
                 int base = offset;
                 if (base + 8 <= bytes.length) {
-                    char c4 = (char) bytes[base + 4];
-                    char c5 = (char) bytes[base + 5];
-                    char c6 = (char) bytes[base + 6];
-                    char c7 = (char) bytes[base + 7];
-                    if ((c4 == 'f' && c5 == 't' && c6 == 'y' && c7 == 'p')
-                            || (c4 == 'm' && c5 == 'o' && c6 == 'o' && c7 == 'v')
-                            || (c4 == 'w' && c5 == 'i' && c6 == 'd' && c7 == 'e')) {
-                        // Find moov declared size from top-level boxes
-                        int moovPos = -1;
-                        long moovDeclaredSize = 0;
-                        int p = base;
-                        while (p + 8 <= bytes.length) {
-                            int rawSize = readIntBE(bytes, p);
-                            char t1 = (char) bytes[p + 4];
-                            char t2 = (char) bytes[p + 5];
-                            char t3 = (char) bytes[p + 6];
-                            char t4 = (char) bytes[p + 7];
-                            long size = rawSize;
-                            if (rawSize == 1 && p + 16 <= bytes.length) {
-                                size = readLongBE(bytes, p + 8);
+                    // Check MKV (EBML 0x1A45DFA3)
+                    if ((bytes[base] & 0xFF) == 0x1A && (bytes[base + 1] & 0xFF) == 0x45
+                            && (bytes[base + 2] & 0xFF) == 0xDF && (bytes[base + 3] & 0xFF) == 0xA3) {
+                        result.addProperty("container", "mkv");
+                        parseMkvTrackBoxes(bytes, base, audioTracks, subtitleTracks);
+                    } else {
+                        char c4 = (char) bytes[base + 4];
+                        char c5 = (char) bytes[base + 5];
+                        char c6 = (char) bytes[base + 6];
+                        char c7 = (char) bytes[base + 7];
+                        if ((c4 == 'f' && c5 == 't' && c6 == 'y' && c7 == 'p')
+                                || (c4 == 'm' && c5 == 'o' && c6 == 'o' && c7 == 'v')
+                                || (c4 == 'w' && c5 == 'i' && c6 == 'd' && c7 == 'e')) {
+                            // Find moov declared size from top-level boxes
+                            int moovPos = -1;
+                            long moovDeclaredSize = 0;
+                            int p = base;
+                            while (p + 8 <= bytes.length) {
+                                int rawSize = readIntBE(bytes, p);
+                                char t1 = (char) bytes[p + 4];
+                                char t2 = (char) bytes[p + 5];
+                                char t3 = (char) bytes[p + 6];
+                                char t4 = (char) bytes[p + 7];
+                                long size = rawSize;
+                                if (rawSize == 1 && p + 16 <= bytes.length) {
+                                    size = readLongBE(bytes, p + 8);
+                                }
+                                if (rawSize == 0) size = bytes.length - p;
+                                if (t1 == 'm' && t2 == 'o' && t3 == 'o' && t4 == 'v') {
+                                    moovPos = p;
+                                    moovDeclaredSize = size;
+                                    break;
+                                }
+                                if (size < 8 || p + size > bytes.length) break;
+                                p += size;
                             }
-                            if (rawSize == 0) size = bytes.length - p;
-                            if (t1 == 'm' && t2 == 'o' && t3 == 'o' && t4 == 'v') {
-                                moovPos = p;
-                                moovDeclaredSize = size;
-                                break;
-                            }
-                            if (size < 8 || p + size > bytes.length) break;
-                            p += size;
-                        }
 
-                        byte[] moovBuf = bytes;
-                        if (moovPos != -1 && moovDeclaredSize > 0 && moovPos + moovDeclaredSize > bytes.length && moovDeclaredSize <= 32 * 1024 * 1024) {
-                            // moov truncated in first pass — re-fetch full moov
-                            long need = offset + moovPos + moovDeclaredSize + 32;
-                            byte[] bigger = fetchRange(targetUrl, customHeaders, 0, need - 1);
-                            if (bigger != null && bigger.length > moovPos + 8) {
-                                moovBuf = bigger;
+                            byte[] moovBuf = bytes;
+                            if (moovPos != -1 && moovDeclaredSize > 0 && moovPos + moovDeclaredSize > bytes.length && moovDeclaredSize <= 32 * 1024 * 1024) {
+                                // moov truncated in first pass — re-fetch full moov
+                                long need = offset + moovPos + moovDeclaredSize + 32;
+                                byte[] bigger = fetchRange(targetUrl, customHeaders, 0, need - 1);
+                                if (bigger != null && bigger.length > moovPos + 8) {
+                                    moovBuf = bigger;
+                                }
                             }
-                        }
 
-                        result.addProperty("container", "mp4");
-                        parseMp4TrakBoxes(moovBuf, offset, audioTracks, subtitleTracks);
+                            result.addProperty("container", "mp4");
+                            parseMp4TrakBoxes(moovBuf, offset, audioTracks, subtitleTracks);
+                        }
                     }
                 }
             }
@@ -815,6 +857,261 @@ public class WebServer extends NanoHTTPD {
             System.arraycopy(out, a0e, swapped, pos, aNs - a0e);   pos += (aNs - a0e);   // between
             System.arraycopy(out, a0s, swapped, pos, a0sz);        pos += a0sz;         // track0
             System.arraycopy(out, aNe, swapped, pos, out.length - aNe);                 // after
+            out = swapped;
+        }
+
+        return out;
+    }
+
+    private static long[] readEbmlId(byte[] b, int pos) {
+        if (b == null || pos >= b.length) return new long[]{0, 0};
+        int b0 = b[pos] & 0xFF;
+        int len = 0;
+        if ((b0 & 0x80) != 0) len = 1;
+        else if ((b0 & 0x40) != 0) len = 2;
+        else if ((b0 & 0x20) != 0) len = 3;
+        else if ((b0 & 0x10) != 0) len = 4;
+        else return new long[]{0, 0};
+        long id = 0;
+        for (int i = 0; i < len; i++) {
+            if (pos + i >= b.length) return new long[]{0, 0};
+            id = (id << 8) | (b[pos + i] & 0xFF);
+        }
+        return new long[]{id, len};
+    }
+
+    private static long[] readEbmlVint(byte[] b, int pos) {
+        if (b == null || pos >= b.length) return new long[]{0, 0};
+        int b0 = b[pos] & 0xFF;
+        int len = 0, mask = 0;
+        if ((b0 & 0x80) != 0) { len = 1; mask = 0x7f; }
+        else if ((b0 & 0x40) != 0) { len = 2; mask = 0x3f; }
+        else if ((b0 & 0x20) != 0) { len = 3; mask = 0x1f; }
+        else if ((b0 & 0x10) != 0) { len = 4; mask = 0x0f; }
+        else if ((b0 & 0x08) != 0) { len = 5; mask = 0x07; }
+        else if ((b0 & 0x04) != 0) { len = 6; mask = 0x03; }
+        else if ((b0 & 0x02) != 0) { len = 7; mask = 0x01; }
+        else if ((b0 & 0x01) != 0) { len = 8; mask = 0x00; }
+        else return new long[]{0, 0};
+        long val = b0 & mask;
+        for (int i = 1; i < len; i++) {
+            if (pos + i >= b.length) return new long[]{0, 0};
+            val = (val << 8) | (b[pos + i] & 0xFF);
+        }
+        return new long[]{val, len};
+    }
+
+    private static void parseMkvTrackBoxes(byte[] buf, int offset, JsonArray audioTracks, JsonArray subtitleTracks) {
+        int pos = offset;
+        while (pos < buf.length - 4) {
+            long[] idArr = readEbmlId(buf, pos);
+            if (idArr[1] == 0) break;
+            pos += (int) idArr[1];
+            long[] szArr = readEbmlVint(buf, pos);
+            if (szArr[1] == 0) break;
+            pos += (int) szArr[1];
+            int dataEnd = (int) Math.min((long) buf.length, (long) pos + szArr[0]);
+
+            if (idArr[0] == 0x18538067L) { // Segment
+                int spos = pos;
+                while (spos < dataEnd - 4) {
+                    long[] sidArr = readEbmlId(buf, spos);
+                    if (sidArr[1] == 0) break;
+                    spos += (int) sidArr[1];
+                    long[] sszArr = readEbmlVint(buf, spos);
+                    if (sszArr[1] == 0) break;
+                    spos += (int) sszArr[1];
+                    int sEnd = (int) Math.min((long) buf.length, (long) spos + sszArr[0]);
+
+                    if (sidArr[0] == 0x1654ae6bL) { // Tracks
+                        int tpos = spos;
+                        while (tpos < sEnd - 4) {
+                            long[] tidArr = readEbmlId(buf, tpos);
+                            if (tidArr[1] == 0) break;
+                            tpos += (int) tidArr[1];
+                            long[] tszArr = readEbmlVint(buf, tpos);
+                            if (tszArr[1] == 0) break;
+                            tpos += (int) tszArr[1];
+                            int entryEnd = (int) Math.min((long) buf.length, (long) tpos + tszArr[0]);
+
+                            if (tidArr[0] == 0xaeL) { // TrackEntry
+                                int trackType = 0;
+                                int trackNum = 0;
+                                int flagEnabled = 1;
+                                String trackLang = "und";
+                                int epos = tpos;
+                                while (epos < entryEnd - 2) {
+                                    long[] eidArr = readEbmlId(buf, epos);
+                                    if (eidArr[1] == 0) break;
+                                    epos += (int) eidArr[1];
+                                    long[] eszArr = readEbmlVint(buf, epos);
+                                    if (eszArr[1] == 0) break;
+                                    epos += (int) eszArr[1];
+                                    int valStart = epos;
+                                    int valLen = (int) eszArr[0];
+
+                                    if (eidArr[0] == 0x83L && valLen > 0) trackType = buf[valStart] & 0xFF;
+                                    else if (eidArr[0] == 0xd7L && valLen > 0) {
+                                        int tn = 0;
+                                        for (int k = 0; k < Math.min(valLen, 4); k++) tn = (tn << 8) | (buf[valStart + k] & 0xFF);
+                                        trackNum = tn;
+                                    } else if (eidArr[0] == 0xb9L && valLen > 0) flagEnabled = buf[valStart] & 0xFF;
+                                    else if (eidArr[0] == 0x22b59cL && valLen > 0) {
+                                        trackLang = new String(buf, valStart, valLen, StandardCharsets.US_ASCII).replace("\0", "").trim();
+                                    }
+                                    epos += valLen;
+                                }
+
+                                if (trackType == 2) {
+                                    JsonObject a = new JsonObject();
+                                    int aIdx = audioTracks.size();
+                                    a.addProperty("index", aIdx);
+                                    a.addProperty("trackId", trackNum > 0 ? trackNum : aIdx + 2);
+                                    a.addProperty("name", aIdx == 0 ? "中文 (立体声)" : "中文 (立体声)");
+                                    a.addProperty("desc", "中文, 立体声, AAC");
+                                    a.addProperty("codec", "AAC");
+                                    a.addProperty("channels", 2);
+                                    a.addProperty("lang", trackLang);
+                                    a.addProperty("enabled", flagEnabled != 0);
+                                    audioTracks.add(a);
+                                } else if (trackType == 17) {
+                                    JsonObject s = new JsonObject();
+                                    int sIdx = subtitleTracks.size();
+                                    s.addProperty("index", sIdx);
+                                    s.addProperty("name", "内置中文字幕 " + (sIdx + 1));
+                                    s.addProperty("desc", "内置中文字幕");
+                                    s.addProperty("lang", trackLang);
+                                    subtitleTracks.add(s);
+                                }
+                            }
+                            tpos = entryEnd;
+                        }
+                        break;
+                    }
+                    spos = sEnd;
+                }
+                break;
+            }
+            pos = dataEnd;
+        }
+
+        // Disambiguate when multiple audio tracks
+        if (audioTracks.size() > 1) {
+            for (int i = 0; i < audioTracks.size(); i++) {
+                JsonObject at = audioTracks.get(i).getAsJsonObject();
+                boolean en = at.has("enabled") && at.get("enabled").getAsBoolean();
+                at.addProperty("name", "音轨 " + (i + 1) + ": " + at.get("name").getAsString() + (en ? " [默认]" : ""));
+            }
+        }
+    }
+
+    private static byte[] swapMkvAudioTrack(byte[] buf, int targetIdx) {
+        if (buf == null || buf.length < 8 || targetIdx < 0) return buf;
+        int offset = detectQuarkPrefix(buf);
+        int pos = offset;
+        int tracksOffset = -1;
+        int tracksEnd = -1;
+
+        while (pos < buf.length - 4) {
+            long[] idArr = readEbmlId(buf, pos);
+            if (idArr[1] == 0) break;
+            pos += (int) idArr[1];
+            long[] szArr = readEbmlVint(buf, pos);
+            if (szArr[1] == 0) break;
+            pos += (int) szArr[1];
+            int dataEnd = (int) Math.min((long) buf.length, (long) pos + szArr[0]);
+
+            if (idArr[0] == 0x18538067L) { // Segment
+                int spos = pos;
+                while (spos < dataEnd - 4) {
+                    long[] sidArr = readEbmlId(buf, spos);
+                    if (sidArr[1] == 0) break;
+                    spos += (int) sidArr[1];
+                    long[] sszArr = readEbmlVint(buf, spos);
+                    if (sszArr[1] == 0) break;
+                    spos += (int) sszArr[1];
+                    int sEnd = (int) Math.min((long) buf.length, (long) spos + sszArr[0]);
+
+                    if (sidArr[0] == 0x1654ae6bL) { // Tracks
+                        tracksOffset = spos;
+                        tracksEnd = sEnd;
+                        break;
+                    }
+                    spos = sEnd;
+                }
+                break;
+            }
+            pos = dataEnd;
+        }
+        if (tracksOffset == -1) return buf;
+
+        java.util.ArrayList<int[]> audioEntries = new java.util.ArrayList<>();
+        int tpos = tracksOffset;
+        while (tpos < tracksEnd - 4) {
+            long[] tidArr = readEbmlId(buf, tpos);
+            if (tidArr[1] == 0) break;
+            int entryStart = tpos;
+            tpos += (int) tidArr[1];
+            long[] tszArr = readEbmlVint(buf, tpos);
+            if (tszArr[1] == 0) break;
+            tpos += (int) tszArr[1];
+            int entryEnd = (int) Math.min((long) buf.length, (long) tpos + tszArr[0]);
+
+            if (tidArr[0] == 0xaeL) { // TrackEntry
+                boolean isAudio = false;
+                int flagEnabledOff = -1;
+                int flagDefaultOff = -1;
+                int epos = tpos;
+                while (epos < entryEnd - 2) {
+                    long[] eidArr = readEbmlId(buf, epos);
+                    if (eidArr[1] == 0) break;
+                    epos += (int) eidArr[1];
+                    long[] eszArr = readEbmlVint(buf, epos);
+                    if (eszArr[1] == 0) break;
+                    epos += (int) eszArr[1];
+                    int valStart = epos;
+                    int valLen = (int) eszArr[0];
+
+                    if (eidArr[0] == 0x83L && valLen > 0 && (buf[valStart] & 0xFF) == 2) isAudio = true;
+                    else if (eidArr[0] == 0xb9L && valLen > 0) flagEnabledOff = valStart;
+                    else if (eidArr[0] == 0x88L && valLen > 0) flagDefaultOff = valStart;
+                    epos += valLen;
+                }
+                if (isAudio) {
+                    audioEntries.add(new int[]{entryStart, entryEnd, flagEnabledOff, flagDefaultOff});
+                }
+            }
+            tpos = entryEnd;
+        }
+
+        if (audioEntries.size() < 2 || targetIdx >= audioEntries.size()) return buf;
+
+        byte[] out = new byte[buf.length];
+        System.arraycopy(buf, 0, out, 0, buf.length);
+
+        for (int i = 0; i < audioEntries.size(); i++) {
+            int[] ent = audioEntries.get(i);
+            if (ent[2] != -1 && ent[2] < out.length) out[ent[2]] = (byte) (i == targetIdx ? 1 : 0);
+            if (ent[3] != -1 && ent[3] < out.length) out[ent[3]] = (byte) (i == targetIdx ? 1 : 0);
+        }
+
+        if (targetIdx > 0) {
+            int[] t0 = audioEntries.get(0);
+            int[] tN = audioEntries.get(targetIdx);
+
+            if (t0[1] > out.length || tN[1] > out.length) return buf;
+
+            byte[] swapped = new byte[out.length];
+            int p = 0;
+            System.arraycopy(out, 0, swapped, p, t0[0]); p += t0[0];
+            int tNLen = tN[1] - tN[0];
+            System.arraycopy(out, tN[0], swapped, p, tNLen); p += tNLen;
+            int betweenLen = tN[0] - t0[1];
+            System.arraycopy(out, t0[1], swapped, p, betweenLen); p += betweenLen;
+            int t0Len = t0[1] - t0[0];
+            System.arraycopy(out, t0[0], swapped, p, t0Len); p += t0Len;
+            int afterLen = out.length - tN[1];
+            System.arraycopy(out, tN[1], swapped, p, afterLen);
             out = swapped;
         }
 

@@ -8,7 +8,7 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { inspectMediaTracks, swapMp4AudioTrack } = require('./lib/media-inspector');
+const { inspectMediaTracks, swapMp4AudioTrack, swapMkvAudioTrack } = require('./lib/media-inspector');
 
 const PORT = 8999;
 const BACKEND_PORT = 9988;
@@ -173,40 +173,52 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
     const rangeHeader = req.headers.range || '';
     const isStartOfFile = !rangeHeader || rangeHeader.startsWith('bytes=0-');
 
-    if (hasAudioTrackParam && targetAudioTrack >= 0 && isStartOfFile && (contentTypeHeader === 'video/mp4' || targetUrl.includes('.mp4') || !isM3u8)) {
+    if (hasAudioTrackParam && targetAudioTrack >= 0 && isStartOfFile && (contentTypeHeader === 'video/mp4' || contentTypeHeader === 'video/x-matroska' || targetUrl.includes('.mp4') || targetUrl.includes('.mkv') || !isM3u8)) {
       let initialChunks = [];
       let totalBytes = 0;
       let intercepted = false;
       let targetScanBytes = 8 * 1024 * 1024; // default 8MB
-      let detectedMoov = false;
+      let detectedHeader = false;
 
       proxyRes.on('data', (chunk) => {
         if (!intercepted) {
           initialChunks.push(chunk);
           totalBytes += chunk.length;
 
-          // Detect moov size early to avoid buffering more than needed or underbuffering
-          if (!detectedMoov && totalBytes >= 64) {
+          // Detect header size early to avoid buffering more than needed
+          if (!detectedHeader && totalBytes >= 64) {
             const probe = Buffer.concat(initialChunks);
-            const prefix = (probe.toString('hex', 0, 4) === '89504e47') ? 8 : 0;
-            let p = prefix;
-            while (p + 8 <= probe.length) {
-              const sz = probe.readUInt32BE(p);
-              const ty = probe.toString('latin1', p + 4, p + 8);
-              if (ty === 'moov') {
-                detectedMoov = true;
-                targetScanBytes = Math.min(p + sz + 64, 16 * 1024 * 1024);
-                break;
+            // Check if MKV (EBML 0x1A45DFA3)
+            if (probe[0] === 0x1a && probe[1] === 0x45 && probe[2] === 0xdf && probe[3] === 0xa3) {
+              detectedHeader = true;
+              targetScanBytes = 256 * 1024; // 256KB is plenty for any MKV Tracks header
+            } else {
+              // Check MP4 moov
+              const prefix = (probe.toString('hex', 0, 4) === '89504e47') ? 8 : 0;
+              let p = prefix;
+              while (p + 8 <= probe.length) {
+                const sz = probe.readUInt32BE(p);
+                const ty = probe.toString('latin1', p + 4, p + 8);
+                if (ty === 'moov') {
+                  detectedHeader = true;
+                  targetScanBytes = Math.min(p + sz + 64, 16 * 1024 * 1024);
+                  break;
+                }
+                if (sz <= 0 || p + sz > probe.length) break;
+                p += sz;
               }
-              if (sz <= 0 || p + sz > probe.length) break;
-              p += sz;
             }
           }
 
           if (totalBytes >= targetScanBytes) {
             intercepted = true;
             const fullBuf = Buffer.concat(initialChunks);
-            const modified = swapMp4AudioTrack(fullBuf, targetAudioTrack);
+            let modified;
+            if (fullBuf[0] === 0x1a && fullBuf[1] === 0x45 && fullBuf[2] === 0xdf && fullBuf[3] === 0xa3) {
+              modified = swapMkvAudioTrack(fullBuf, targetAudioTrack);
+            } else {
+              modified = swapMp4AudioTrack(fullBuf, targetAudioTrack);
+            }
             res.write(modified);
             initialChunks = null;
           }
@@ -218,7 +230,12 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
       proxyRes.on('end', () => {
         if (!intercepted && initialChunks && initialChunks.length > 0) {
           const fullBuf = Buffer.concat(initialChunks);
-          const modified = swapMp4AudioTrack(fullBuf, targetAudioTrack);
+          let modified;
+          if (fullBuf[0] === 0x1a && fullBuf[1] === 0x45 && fullBuf[2] === 0xdf && fullBuf[3] === 0xa3) {
+            modified = swapMkvAudioTrack(fullBuf, targetAudioTrack);
+          } else {
+            modified = swapMp4AudioTrack(fullBuf, targetAudioTrack);
+          }
           res.write(modified);
         }
         res.end();
