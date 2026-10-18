@@ -630,18 +630,25 @@
         </div>
 
         <!-- Subtitle Popover Overlay inside playerViewport -->
-        <div id="subtitlePopover" class="hidden absolute bottom-12 right-8 sm:bottom-14 sm:right-14 z-40 w-64 sm:w-72 max-w-[90vw] rounded-2xl bg-black/80 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-3.5 flex flex-col transition-all duration-200">
+        <div id="subtitlePopover" class="hidden absolute bottom-12 right-8 sm:bottom-14 sm:right-14 z-40 w-64 sm:w-80 max-w-[90vw] rounded-2xl bg-black/85 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)] p-3.5 flex flex-col transition-all duration-200">
           <div class="flex items-center justify-between pb-2 border-b border-white/10 mb-2 flex-shrink-0">
             <div class="flex items-center gap-1.5">
               <span class="text-xs">💬</span>
               <span class="text-xs font-bold text-white">字幕选择</span>
               <span id="subtitleCountBadge" class="text-[10px] text-indigo-300 font-mono">(0)</span>
             </div>
-            <button onclick="closeSubtitlePopover()" class="p-1 text-gray-400 hover:text-white rounded-lg transition cursor-pointer" title="关闭">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
+            <div class="flex items-center gap-1.5">
+              <input type="file" id="localSubFileInput" accept=".srt,.vtt,.ass,.ssa" class="hidden" onchange="handleLocalSubFileInput(event)" />
+              <button onclick="document.getElementById('localSubFileInput').click()" class="text-[10px] bg-indigo-600/80 hover:bg-indigo-500 text-white px-2 py-0.5 rounded-lg flex items-center gap-1 transition cursor-pointer" title="选择电脑本地字幕文件 (.srt / .vtt / .ass)">
+                <span>📂</span>
+                <span>本地字幕</span>
+              </button>
+              <button onclick="closeSubtitlePopover()" class="p-1 text-gray-400 hover:text-white rounded-lg transition cursor-pointer" title="关闭">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
           </div>
-          <div id="subtitleTrackList" class="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-48 text-xs"></div>
+          <div id="subtitleTrackList" class="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-56 text-xs"></div>
         </div>
         <!-- Keyboard Shortcuts Help Modal Overlay inside playerViewport -->
         <div id="shortcutsHelpModal" class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none transition-all duration-200">
@@ -3040,13 +3047,14 @@
             name: t.name || `内置字幕 ${i + 1}`,
             desc: t.desc || '',
             lang: t.lang || '',
-            default: (i === 0),
+            default: false,
             source: 'embedded'
           }));
           const nonEmbedded = currentSubtitleTracks.filter(s => s.source !== 'embedded');
-          currentSubtitleTracks = [...embeddedSubs, ...nonEmbedded];
-          if (activeSubtitleTrackIndex === -1 && currentSubtitleTracks.length > 0) {
-            activeSubtitleTrackIndex = 0;
+          // Keep external/local subtitles in front, embedded tracks following
+          currentSubtitleTracks = [...nonEmbedded, ...embeddedSubs];
+          if (nonEmbedded.length > 0 && activeSubtitleTrackIndex === -1) {
+            selectSubtitleTrack(0);
           }
           renderSubtitleMenu();
           console.log('[MediaTracks] Successfully parsed stream subtitle tracks:', currentSubtitleTracks);
@@ -3320,15 +3328,25 @@
             ? 'bg-indigo-600/90 text-white font-bold border-indigo-400/80 shadow'
             : 'bg-white/5 hover:bg-white/15 text-gray-200 border-white/5'
         }`;
+
+        let typeBadge = '';
+        if (sub.source === 'external') {
+          typeBadge = '<span class="text-[9px] bg-emerald-950/90 text-emerald-300 px-1.5 py-0.5 rounded ml-1.5 border border-emerald-800 font-normal">外挂</span>';
+        } else if (sub.source === 'hls') {
+          typeBadge = '<span class="text-[9px] bg-blue-950/90 text-blue-300 px-1.5 py-0.5 rounded ml-1.5 border border-blue-800 font-normal">HLS</span>';
+        } else if (sub.source === 'embedded') {
+          typeBadge = '<span class="text-[9px] bg-white/10 text-gray-400 px-1.5 py-0.5 rounded ml-1.5 border border-white/10 font-normal" title="MKV/MP4内置字幕">内置</span>';
+        }
+
         btn.innerHTML = `
           <div class="flex items-center gap-2 truncate flex-1 min-w-0">
             <span>💬</span>
-            <div class="truncate">
+            <div class="truncate flex items-center">
               <span class="truncate font-medium">${sub.name || `字幕 ${idx + 1}`}</span>
-              ${sub.isExternal ? '<span class="text-[9px] bg-indigo-950 text-indigo-300 px-1 py-0.2 rounded ml-1 border border-indigo-800">外挂</span>' : ''}
+              ${typeBadge}
             </div>
           </div>
-          ${isSelected ? '<span class="text-xs font-bold ml-2">✓ 显示中</span>' : ''}
+          ${isSelected ? '<span class="text-xs font-bold ml-2 text-indigo-200">✓ 显示中</span>' : ''}
         `;
         btn.onclick = (e) => {
           e.stopPropagation();
@@ -3357,12 +3375,23 @@
         if (sub.source === 'hls' && hlsInstance) {
           hlsInstance.subtitleTrack = idx;
           hlsInstance.subtitleDisplay = true;
-        } else if (videoElement.textTracks) {
-          for (let i = 0; i < videoElement.textTracks.length; i++) {
-            videoElement.textTracks[i].mode = (i === idx) ? 'showing' : 'hidden';
+          showOsd('💬', `字幕: ${sub.name}`, `已开启 HLS 字幕`);
+        } else if (sub.source === 'external') {
+          if (videoElement.textTracks) {
+            for (let i = 0; i < videoElement.textTracks.length; i++) {
+              const t = videoElement.textTracks[i];
+              t.mode = (t.label === sub.name) ? 'showing' : 'hidden';
+            }
           }
+          showOsd('💬', `字幕: ${sub.name}`, `已开启外挂字幕`);
+        } else if (sub.source === 'embedded') {
+          if (videoElement.textTracks) {
+            for (let i = 0; i < videoElement.textTracks.length; i++) {
+              videoElement.textTracks[i].mode = 'hidden';
+            }
+          }
+          showOsd('⚠️', `内置字幕: ${sub.name}`, 'MKV内置字幕(如蓝光PGS位图流)Web端无法直接解码，建议点击上方【📂本地字幕】加载外挂字幕');
         }
-        showOsd('💬', `字幕: ${sub.name}`, `已开启第 ${idx + 1}/${currentSubtitleTracks.length} 款字幕`);
       }
       renderSubtitleMenu();
       closeSubtitlePopover();
@@ -3421,6 +3450,130 @@
       isSubtitlePopoverOpen = false;
     }
 
+    function convertSrtToVtt(rawText) {
+      if (!rawText) return 'WEBVTT\n\n';
+      let text = rawText.replace(/\r\n|\r/g, '\n').trim();
+      if (text.startsWith('WEBVTT')) return text;
+
+      // Handle ASS/SSA subtitles
+      if (text.includes('[Events]') && text.includes('Dialogue:')) {
+        const lines = text.split('\n');
+        let vtt = 'WEBVTT\n\n';
+        let inEvents = false;
+        let formatFields = [];
+        for (const line of lines) {
+          if (line.startsWith('[Events]')) { inEvents = true; continue; }
+          if (inEvents && line.startsWith('Format:')) {
+            formatFields = line.substring(7).split(',').map(s => s.trim().toLowerCase());
+            continue;
+          }
+          if (inEvents && line.startsWith('Dialogue:')) {
+            const parts = line.substring(9).split(',');
+            const startIdx = formatFields.indexOf('start');
+            const endIdx = formatFields.indexOf('end');
+            const textIdx = formatFields.indexOf('text');
+            if (startIdx !== -1 && endIdx !== -1) {
+              const start = parts[startIdx]?.trim();
+              const end = parts[endIdx]?.trim();
+              const dText = parts.slice(textIdx !== -1 ? textIdx : 9).join(',').replace(/\{[^}]+\}/g, '').replace(/\\N/g, '\n').trim();
+              if (start && end && dText) {
+                const fmt = (t) => {
+                  const p = t.split(':');
+                  const h = p[0].padStart(2, '0');
+                  const m = (p[1] || '00').padStart(2, '0');
+                  const sParts = (p[2] || '00.00').split('.');
+                  const s = sParts[0].padStart(2, '0');
+                  const ms = (sParts[1] || '00').padEnd(3, '0').slice(0, 3);
+                  return `${h}:${m}:${s}.${ms}`;
+                };
+                vtt += `${fmt(start)} --> ${fmt(end)}\n${dText}\n\n`;
+              }
+            }
+          }
+        }
+        return vtt;
+      }
+
+      // Standard SRT -> VTT
+      text = text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+      return 'WEBVTT\n\n' + text;
+    }
+
+    function addCustomSubtitle(name, content, autoSelect = true) {
+      try {
+        const vtt = convertSrtToVtt(content);
+        const blobUrl = URL.createObjectURL(new Blob([vtt], { type: 'text/vtt;charset=utf-8' }));
+        const trackEl = document.createElement('track');
+        trackEl.kind = 'subtitles';
+        trackEl.label = name;
+        trackEl.srclang = 'zh';
+        trackEl.src = blobUrl;
+        trackEl.className = 'custom-dynamic-sub-track';
+        videoElement.appendChild(trackEl);
+
+        const subItem = {
+          id: 'ext_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          name: name,
+          lang: 'zh',
+          source: 'external',
+          isExternal: true
+        };
+        currentSubtitleTracks.unshift(subItem);
+        renderSubtitleMenu();
+
+        if (autoSelect) {
+          selectSubtitleTrack(0);
+          showOsd('💬', '已加载字幕', name);
+        }
+        return true;
+      } catch (err) {
+        console.error('Failed to add custom subtitle:', err);
+        showToast('加载字幕失败: ' + err.message);
+        return false;
+      }
+    }
+
+    function handleLocalSubFileInput(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        addCustomSubtitle(file.name, e.target.result, true);
+      };
+      reader.readAsText(file, 'utf-8');
+      event.target.value = '';
+    }
+
+    function setupSubtitleDragAndDrop() {
+      const dropZone = document.getElementById('playerViewport');
+      if (!dropZone) return;
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+          const file = files[0];
+          const ext = file.name.split('.').pop().toLowerCase();
+          if (['srt', 'vtt', 'ass', 'ssa'].includes(ext)) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              addCustomSubtitle(file.name, event.target.result, true);
+            };
+            reader.readAsText(file, 'utf-8');
+          } else {
+            showToast('请拖入有效的字幕文件 (.srt / .vtt / .ass)');
+          }
+        }
+      });
+    }
+
     async function loadExternalSubtitles(playData) {
       const raw = playData.subs || playData.sub || playData.extra?.sub || playData.extra?.subs;
       if (!raw) return;
@@ -3434,7 +3587,6 @@
         const item = validList[i];
         const subUrl = typeof item === 'string' ? item : (item.url || item.src);
         const subName = (typeof item === 'object' && (item.name || item.label || item.title)) ? (item.name || item.label || item.title) : `外挂字幕 ${i + 1}`;
-        const subLang = (typeof item === 'object' && item.lang) ? item.lang : 'zh';
         try {
           let fetchUrl = subUrl;
           if (!subUrl.startsWith('/') && !subUrl.startsWith(window.location.origin)) {
@@ -3443,33 +3595,7 @@
           const res = await fetch(fetchUrl);
           if (res.ok) {
             const rawText = await res.text();
-            let vttText = rawText;
-            if (subUrl.endsWith('.srt') || (!rawText.startsWith('WEBVTT') && rawText.includes('-->'))) {
-              vttText = 'WEBVTT\n\n' + rawText.replace(/\r\n|\r/g, '\n').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
-            }
-            const blobUrl = URL.createObjectURL(new Blob([vttText], { type: 'text/vtt' }));
-            const trackEl = document.createElement('track');
-            trackEl.kind = 'subtitles';
-            trackEl.label = subName;
-            trackEl.srclang = subLang;
-            trackEl.src = blobUrl;
-            trackEl.className = 'custom-dynamic-sub-track';
-            if (i === 0) {
-              trackEl.default = true;
-            }
-            videoElement.appendChild(trackEl);
-            if (i === 0 && trackEl.track) {
-              trackEl.track.mode = 'showing';
-            }
-            currentSubtitleTracks.push({
-              id: `ext_${i}`,
-              name: subName,
-              lang: subLang,
-              default: (i === 0),
-              source: 'external',
-              url: subUrl
-            });
-            if (i === 0) activeSubtitleTrackIndex = currentSubtitleTracks.length - 1;
+            addCustomSubtitle(subName, rawText, (i === 0));
           }
         } catch (e) {
           console.warn('[Subtitle] Failed loading external sub:', e);
@@ -3870,6 +3996,7 @@
     // Bootstrap
     loadSavedSources();
     updateHistoryBadge();
+    setupSubtitleDragAndDrop();
     if (userSources.length > 0 && activeSourceIndex >= 0) {
       loadActiveSource();
     } else {
