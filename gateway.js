@@ -47,6 +47,15 @@ function checkBackendReady(retries = 10, delay = 1000) {
 }
 
 function startBackend() {
+  const cacheDir = path.join(__dirname, 'vod_cache');
+  if (!fs.existsSync(cacheDir)) {
+    try { fs.mkdirSync(cacheDir, { recursive: true }); } catch (e) {}
+  }
+  const dataDir = path.join(__dirname, 'data');
+  if (!fs.existsSync(dataDir)) {
+    try { fs.mkdirSync(dataDir, { recursive: true }); } catch (e) {}
+  }
+
   console.log('[Gateway] Starting backend index.js...');
   backendProcess = spawn(process.execPath, [path.join(__dirname, 'index.js')], {
     cwd: __dirname,
@@ -60,6 +69,10 @@ function startBackend() {
 
   backendProcess.on('exit', (code, signal) => {
     console.log(`[Gateway] Backend exited with code ${code} signal ${signal}`);
+    if (code !== 0 && code !== null) {
+      console.log('[Gateway] Restarting backend index.js in 2 seconds...');
+      setTimeout(startBackend, 2000);
+    }
   });
 }
 
@@ -206,14 +219,18 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
               const prefix = (probe.toString('hex', 0, 4) === '89504e47') ? 8 : 0;
               let p = prefix;
               while (p + 8 <= probe.length) {
-                const sz = probe.readUInt32BE(p);
+                let sz = probe.readUInt32BE(p);
                 const ty = probe.toString('latin1', p + 4, p + 8);
+                if (sz === 1 && p + 16 <= probe.length) {
+                  sz = Number(probe.readBigUInt64BE(p + 8));
+                  if (sz < 16) break;
+                }
                 if (ty === 'moov') {
                   detectedHeader = true;
                   targetScanBytes = Math.min(p + sz + 64, 16 * 1024 * 1024);
                   break;
                 }
-                if (sz <= 0 || p + sz > probe.length) break;
+                if (sz < 8 || p + sz > probe.length) break;
                 p += sz;
               }
             }

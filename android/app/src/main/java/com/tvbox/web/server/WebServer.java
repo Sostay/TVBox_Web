@@ -919,29 +919,32 @@ public class WebServer extends NanoHTTPD {
             long[] szArr = readEbmlVint(buf, pos);
             if (szArr[1] == 0) break;
             pos += (int) szArr[1];
-            int dataEnd = (int) Math.min((long) buf.length, (long) pos + szArr[0]);
+            int dataEnd = (szArr[0] > 0) ? (int) Math.min((long) buf.length, (long) pos + szArr[0]) : buf.length;
+            if (dataEnd <= pos) break;
 
             if (idArr[0] == 0x18538067L) { // Segment
                 int spos = pos;
-                while (spos < dataEnd - 4) {
+                while (spos < dataEnd - 4 && spos >= 0) {
                     long[] sidArr = readEbmlId(buf, spos);
                     if (sidArr[1] == 0) break;
                     spos += (int) sidArr[1];
                     long[] sszArr = readEbmlVint(buf, spos);
                     if (sszArr[1] == 0) break;
                     spos += (int) sszArr[1];
-                    int sEnd = (int) Math.min((long) buf.length, (long) spos + sszArr[0]);
+                    int sEnd = (sszArr[0] > 0) ? (int) Math.min((long) buf.length, (long) spos + sszArr[0]) : dataEnd;
+                    if (sEnd <= spos) break;
 
                     if (sidArr[0] == 0x1654ae6bL) { // Tracks
                         int tpos = spos;
-                        while (tpos < sEnd - 4) {
+                        while (tpos < sEnd - 4 && tpos >= 0) {
                             long[] tidArr = readEbmlId(buf, tpos);
                             if (tidArr[1] == 0) break;
                             tpos += (int) tidArr[1];
                             long[] tszArr = readEbmlVint(buf, tpos);
                             if (tszArr[1] == 0) break;
                             tpos += (int) tszArr[1];
-                            int entryEnd = (int) Math.min((long) buf.length, (long) tpos + tszArr[0]);
+                            int entryEnd = (tszArr[0] > 0) ? (int) Math.min((long) buf.length, (long) tpos + tszArr[0]) : sEnd;
+                            if (entryEnd <= tpos) break;
 
                             if (tidArr[0] == 0xaeL) { // TrackEntry
                                 int trackType = 0;
@@ -949,7 +952,7 @@ public class WebServer extends NanoHTTPD {
                                 int flagEnabled = 1;
                                 String trackLang = "und";
                                 int epos = tpos;
-                                while (epos < entryEnd - 2) {
+                                while (epos < entryEnd - 2 && epos >= 0) {
                                     long[] eidArr = readEbmlId(buf, epos);
                                     if (eidArr[1] == 0) break;
                                     epos += (int) eidArr[1];
@@ -958,6 +961,7 @@ public class WebServer extends NanoHTTPD {
                                     epos += (int) eszArr[1];
                                     int valStart = epos;
                                     int valLen = (int) eszArr[0];
+                                    if (valLen <= 0) break;
 
                                     if (eidArr[0] == 0x83L && valLen > 0) trackType = buf[valStart] & 0xFF;
                                     else if (eidArr[0] == 0xd7L && valLen > 0) {
@@ -1021,25 +1025,27 @@ public class WebServer extends NanoHTTPD {
         int tracksOffset = -1;
         int tracksEnd = -1;
 
-        while (pos < buf.length - 4) {
+        while (pos < buf.length - 4 && pos >= 0) {
             long[] idArr = readEbmlId(buf, pos);
             if (idArr[1] == 0) break;
             pos += (int) idArr[1];
             long[] szArr = readEbmlVint(buf, pos);
             if (szArr[1] == 0) break;
             pos += (int) szArr[1];
-            int dataEnd = (int) Math.min((long) buf.length, (long) pos + szArr[0]);
+            int dataEnd = (szArr[0] > 0) ? (int) Math.min((long) buf.length, (long) pos + szArr[0]) : buf.length;
+            if (dataEnd <= pos) break;
 
             if (idArr[0] == 0x18538067L) { // Segment
                 int spos = pos;
-                while (spos < dataEnd - 4) {
+                while (spos < dataEnd - 4 && spos >= 0) {
                     long[] sidArr = readEbmlId(buf, spos);
                     if (sidArr[1] == 0) break;
                     spos += (int) sidArr[1];
                     long[] sszArr = readEbmlVint(buf, spos);
                     if (sszArr[1] == 0) break;
                     spos += (int) sszArr[1];
-                    int sEnd = (int) Math.min((long) buf.length, (long) spos + sszArr[0]);
+                    int sEnd = (sszArr[0] > 0) ? (int) Math.min((long) buf.length, (long) spos + sszArr[0]) : dataEnd;
+                    if (sEnd <= spos) break;
 
                     if (sidArr[0] == 0x1654ae6bL) { // Tracks
                         tracksOffset = spos;
@@ -1056,7 +1062,7 @@ public class WebServer extends NanoHTTPD {
 
         java.util.ArrayList<int[]> audioEntries = new java.util.ArrayList<>();
         int tpos = tracksOffset;
-        while (tpos < tracksEnd - 4) {
+        while (tpos < tracksEnd - 4 && tpos >= 0) {
             long[] tidArr = readEbmlId(buf, tpos);
             if (tidArr[1] == 0) break;
             int entryStart = tpos;
@@ -1064,14 +1070,15 @@ public class WebServer extends NanoHTTPD {
             long[] tszArr = readEbmlVint(buf, tpos);
             if (tszArr[1] == 0) break;
             tpos += (int) tszArr[1];
-            int entryEnd = (int) Math.min((long) buf.length, (long) tpos + tszArr[0]);
+            int entryEnd = (tszArr[0] > 0) ? (int) Math.min((long) buf.length, (long) tpos + tszArr[0]) : tracksEnd;
+            if (entryEnd <= tpos) break;
 
             if (tidArr[0] == 0xaeL) { // TrackEntry
                 boolean isAudio = false;
                 int flagEnabledOff = -1;
                 int flagDefaultOff = -1;
                 int epos = tpos;
-                while (epos < entryEnd - 2) {
+                while (epos < entryEnd - 2 && epos >= 0) {
                     long[] eidArr = readEbmlId(buf, epos);
                     if (eidArr[1] == 0) break;
                     epos += (int) eidArr[1];
@@ -1080,6 +1087,7 @@ public class WebServer extends NanoHTTPD {
                     epos += (int) eszArr[1];
                     int valStart = epos;
                     int valLen = (int) eszArr[0];
+                    if (valLen <= 0) break;
 
                     if (eidArr[0] == 0x83L && valLen > 0 && (buf[valStart] & 0xFF) == 2) isAudio = true;
                     else if (eidArr[0] == 0xb9L && valLen > 0) flagEnabledOff = valStart;
