@@ -339,10 +339,19 @@ public class WebServer extends NanoHTTPD {
                 try { audioTrack = Integer.parseInt(audioTrackStr); } catch (NumberFormatException ignored) {}
             }
             boolean isStartOfFile = clientRange == null || clientRange.startsWith("bytes=0-");
+            boolean isSmallProbe = false;
+            if (clientRange != null && clientRange.startsWith("bytes=0-")) {
+                try {
+                    long end = Long.parseLong(clientRange.substring("bytes=0-".length()).trim());
+                    if (end < 131072) {
+                        isSmallProbe = true;
+                    }
+                } catch (Exception ignored) {}
+            }
             boolean isMp4 = contentType.equals("video/mp4") || targetUrl.toLowerCase().contains(".mp4");
             boolean isStreamEligible = isMp4 || contentType.equals("video/x-matroska") || targetUrl.toLowerCase().contains(".mkv") || !isM3u8;
 
-            if (hasAudioTrack && audioTrack >= 0 && isStartOfFile && isStreamEligible) {
+            if (!isSmallProbe && hasAudioTrack && audioTrack >= 0 && isStartOfFile && isStreamEligible) {
                 // Stream-level audio track swap: fetch probe, swap audio track boxes, stream rest.
                 okResp.close(); // release the initial (unused) upstream response
                 byte[] probe = fetchRange(targetUrl, customHeaders, 0, 524287);

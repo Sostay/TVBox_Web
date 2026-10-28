@@ -173,7 +173,16 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
     const rangeHeader = req.headers.range || '';
     const isStartOfFile = !rangeHeader || rangeHeader.startsWith('bytes=0-');
 
-    if (hasAudioTrackParam && targetAudioTrack >= 0 && isStartOfFile && (contentTypeHeader === 'video/mp4' || contentTypeHeader === 'video/x-matroska' || targetUrl.includes('.mp4') || targetUrl.includes('.mkv') || !isM3u8)) {
+    // Small range probe check (e.g. bytes=0-999 or < 128KB header sniffing)
+    let isSmallProbe = false;
+    if (rangeHeader && rangeHeader.startsWith('bytes=0-')) {
+      const match = rangeHeader.match(/bytes=0-(\d+)/);
+      if (match && parseInt(match[1], 10) < 131072) {
+        isSmallProbe = true;
+      }
+    }
+
+    if (!isSmallProbe && hasAudioTrackParam && targetAudioTrack >= 0 && isStartOfFile && (contentTypeHeader === 'video/mp4' || contentTypeHeader === 'video/x-matroska' || targetUrl.includes('.mp4') || targetUrl.includes('.mkv') || !isM3u8)) {
       let initialChunks = [];
       let totalBytes = 0;
       let intercepted = false;
@@ -219,11 +228,27 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
             } else {
               modified = swapMp4AudioTrack(fullBuf, targetAudioTrack);
             }
-            res.write(modified);
             initialChunks = null;
+            if (!res.destroyed && !res.writableEnded) {
+              const ok = res.write(modified);
+              if (!ok) {
+                proxyRes.pause();
+                res.once('drain', () => {
+                  if (!proxyRes.destroyed) proxyRes.resume();
+                });
+              }
+            }
           }
         } else {
-          res.write(chunk);
+          if (!res.destroyed && !res.writableEnded) {
+            const ok = res.write(chunk);
+            if (!ok) {
+              proxyRes.pause();
+              res.once('drain', () => {
+                if (!proxyRes.destroyed) proxyRes.resume();
+              });
+            }
+          }
         }
       });
 
@@ -236,10 +261,22 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
           } else {
             modified = swapMp4AudioTrack(fullBuf, targetAudioTrack);
           }
-          res.write(modified);
+          if (!res.destroyed && !res.writableEnded) {
+            res.write(modified);
+          }
+          initialChunks = null;
         }
-        res.end();
+        if (!res.destroyed && !res.writableEnded) {
+          res.end();
+        }
       });
+
+      proxyRes.on('error', (err) => {
+        if (!res.destroyed) {
+          res.destroy(err);
+        }
+      });
+
       return;
     }
 
@@ -254,9 +291,20 @@ function handleStreamProxy(req, res, targetUrl, customHeadersStr) {
     }
   });
 
-  req.on('aborted', () => {
-    proxyReq.destroy();
+  // Client lifecycle & connection leak prevention
+  const cleanup = () => {
+    if (!proxyReq.destroyed) {
+      proxyReq.destroy();
+    }
+  };
+
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      cleanup();
+    }
   });
+  req.on('error', cleanup);
+  res.on('error', cleanup);
 
   proxyReq.end();
 }
@@ -333,7 +381,17 @@ function forwardToBackend(req, res, targetPath) {
     }
   });
 
-  req.pipe(proxyReq);
+  res.on('close', () => {
+    if (!res.writableEnded && !proxyReq.destroyed) {
+      proxyReq.destroy();
+    }
+  });
+
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    proxyReq.end();
+  } else {
+    req.pipe(proxyReq);
+  }
 }
 
 // 5. HTTP Gateway Server

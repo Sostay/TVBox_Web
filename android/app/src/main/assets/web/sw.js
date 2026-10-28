@@ -32,6 +32,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Only handle same-origin requests; never intercept cross-origin third-party resources (e.g. image proxies, CDNs)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   // Do not intercept or cache stream and dynamic API proxies
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/proxy') || url.pathname.startsWith('/website/api/')) {
     return;
@@ -55,6 +60,7 @@ self.addEventListener('fetch', (event) => {
           if (event.request.mode === 'navigate') {
             return caches.match('/index.html');
           }
+          return new Response('', { status: 408, statusText: 'Request timed out' });
         });
       })
   );
