@@ -364,6 +364,37 @@
       </div>
     </div>
 
+    <!-- 1.1 Local Service Offline / Disconnected Notice -->
+    <div id="serviceOfflineNotice" class="hidden my-8 p-6 bg-dark-800/95 border border-indigo-500/40 rounded-2xl max-w-2xl mx-auto shadow-2xl">
+      <div class="flex items-start gap-4">
+        <div class="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 flex-shrink-0">
+          <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="flex-1">
+          <h3 class="font-bold text-base text-white flex items-center gap-2">
+            本地服务尚未启动或已断开
+            <span class="text-[11px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/30">Failed to fetch</span>
+          </h3>
+          <p class="text-xs text-gray-300 mt-2 leading-relaxed">
+            网页前端由 PWA 离线缓存正常呈现，但未能连接到本地后台服务网关（<code class="text-indigo-400 font-mono">http://127.0.0.1:8999/api/config</code>）。
+          </p>
+          <div class="mt-3 p-3 bg-white/5 rounded-xl text-xs text-gray-400 space-y-1.5">
+            <p>💡 <strong class="text-white">解决办法：</strong></p>
+            <p>1. 如果刚开机或关闭了黑框，请双击运行项目目录下的 <code class="text-indigo-300 font-mono font-bold">start.bat</code>（或后台静默启动 <code class="text-indigo-300 font-mono font-bold">start_silent.bat</code>）；</p>
+            <p>2. 启动后，点击下方【重新连接本地服务】按钮即可立刻恢复正常观影。</p>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2.5">
+            <button onclick="retryLoadSource()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer">
+              <span>🔄 重新连接本地服务</span>
+            </button>
+            <button onclick="openWebsiteModal()" class="px-3.5 py-2 bg-dark-700 hover:bg-dark-600 border border-gray-600 text-gray-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer">
+              <span>⚙️ 网盘配置中心</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 2. Site Error Card -->
     <div id="siteErrorCard" class="hidden my-8 p-6 bg-dark-800/90 border border-amber-500/30 rounded-2xl max-w-2xl mx-auto shadow-xl">
       <div class="flex items-start gap-4">
@@ -1892,6 +1923,7 @@
 
       noSourceNotice.classList.add('hidden');
       siteErrorCard.classList.add('hidden');
+      hideServiceOfflineNotice();
       setLoading(true);
 
       const src = userSources[activeSourceIndex];
@@ -1917,11 +1949,40 @@
           renderSitesDropdown(sites);
         }
       } catch (err) {
-        showToast('加载源失败: ' + err.message);
-        setEmpty(true);
+        console.warn('[App] Load source failed:', err);
+        const isOffline = err.message === 'Failed to fetch' || err.name === 'TypeError' || err.message.includes('无法连接');
+        if (isOffline) {
+          showServiceOfflineNotice();
+        } else {
+          showToast('加载源失败: ' + err.message);
+          setEmpty(true);
+        }
       } finally {
         setLoading(false);
       }
+    }
+
+    function showServiceOfflineNotice() {
+      const offlineNotice = document.getElementById('serviceOfflineNotice');
+      if (offlineNotice) offlineNotice.classList.remove('hidden');
+      if (noSourceNotice) noSourceNotice.classList.add('hidden');
+      if (siteErrorCard) siteErrorCard.classList.add('hidden');
+      if (emptyNotice) emptyNotice.classList.add('hidden');
+      if (videoGrid) videoGrid.innerHTML = '';
+      if (categoryBar) categoryBar.innerHTML = '';
+      const label = document.getElementById('siteSelectLabel');
+      if (label) label.textContent = '本地服务未连接';
+      showToast('无法连接本地 TVBox Web 服务，请检查 start.bat 是否运行');
+    }
+
+    function hideServiceOfflineNotice() {
+      const offlineNotice = document.getElementById('serviceOfflineNotice');
+      if (offlineNotice) offlineNotice.classList.add('hidden');
+    }
+
+    function retryLoadSource() {
+      hideServiceOfflineNotice();
+      loadActiveSource();
     }
 
     function renderSitesDropdown(sites) {

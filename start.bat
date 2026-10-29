@@ -75,10 +75,18 @@ exit /b 1
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$c = Get-NetTCPConnection -LocalPort 8999 -State Listen -ErrorAction SilentlyContinue; if ($c) { exit 10 } else { exit 0 }" >nul 2>nul
 if %errorlevel% equ 10 (
     echo.
-    echo [提示] 服务端口 8999 已处于监听状态，TVBox Web 可能已在运行中！
-    echo        * Web 观影地址: http://127.0.0.1:8999
-    echo        * 如需重启服务，请先双击运行 stop.bat
+    echo ========================================================
+    echo  [提示] 服务端口 8999 已处于监听状态，TVBox Web 已经在运行中！
+    echo ========================================================
+    echo   * Web 观影地址: http://127.0.0.1:8999
+    echo   * 网盘配置中心: http://127.0.0.1:8999/website
+    echo   * 如需重启服务，请先双击运行 stop.bat
+    echo ========================================================
     echo.
+    echo [*] 正在打开观影主页...
+    start "" "http://127.0.0.1:8999"
+    pause
+    exit /b 0
 )
 
 :: 4.1 检查 8999 端口是否落入 Windows Hyper-V/WinNAT 动态保留排他段 (EACCES)
